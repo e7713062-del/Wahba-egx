@@ -1,50 +1,51 @@
 import streamlit as st
 from tradingview_ta import TA_Handler, Interval
 
-st.set_page_config(page_title="Wahba Pro | فلتر الأسهم", layout="wide")
+st.set_page_config(page_title="Wahba Pro | الماسح التلقائي", layout="wide")
 
-st.title("🔍 فلتر الأسهم الصاعدة (Wahba Pro)")
-st.write("يتم الآن فحص أسهم البورصة المصرية لإظهار الفرص الصاعدة فقط...")
+st.title("🛡️ Wahba Pro: رادار البورصة المصرية الشامل")
+st.write("الرادار بيفحص حالياً كل الأسهم المدرجة في مصر وبيطلع لك 'الصاعد' بس..")
 
-# قائمة بأهم رموز الأسهم المصرية (تقدر تضيف لحد 160 رمز بنفس الطريقة)
+# قائمة ضخمة لأهم الأسهم (ممكن تسيبها كقاعدة بيانات والبرنامج بيفحصها)
+# أي سهم جديد ينزل البورصة، ضيف رمزه هنا مرة واحدة وهيفضل شغال للأبد
 symbols = [
     "EGX30", "EGX70", "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", 
     "EGAL", "PHDC", "HRHO", "ESRS", "ORWE", "SKPC", "BTEL", "EGCH",
     "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO", "CANA", "ESGI",
-    "GBCO", "CCAP", "AUTO", "MNHD", "PORT", "TALA", "ETEL"
-    # ضيف باقي الرموز هنا داخل القائمة بنفس النمط
+    "GBCO", "CCAP", "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH",
+    "ESLAN", "RMDA", "CIRA", "CLHO", "MIPH", "DSCW", "DOMT", "OBRI",
+    "BINV", "ORAS", "DAPH", "MOIL", "AIVC", "IDRE", "ASCM", "RAQT"
 ]
 
-found_bullish = 0
+# لو عايز تضيف الـ 160 سهم، حط رموزهم في القائمة فوق بنفس الطريقة
 
-# عرض النتائج في شكل أعمدة عشان الزحمة
+bullish_found = 0
 cols = st.columns(3)
 
-for i, sym in enumerate(symbols):
-    try:
-        handler = TA_Handler(
-            symbol=sym,
-            screener="egypt",
-            exchange="EGX",
-            interval=Interval.INTERVAL_1_DAY
-        )
-        analysis = handler.get_analysis()
-        status = analysis.summary['RECOMMENDATION']
+with st.spinner('جاري فحص السوق بالكامل...'):
+    for sym in symbols:
+        try:
+            handler = TA_Handler(
+                symbol=sym,
+                screener="egypt",
+                exchange="EGX",
+                interval=Interval.INTERVAL_1_DAY
+            )
+            analysis = handler.get_analysis()
+            rec = analysis.summary['RECOMMENDATION']
 
-        # فلترة: إظهار الصاعد فقط (BUY أو STRONG_BUY)
-        if "BUY" in status:
-            found_bullish += 1
-            # توزيع النتائج على الأعمدة
-            with cols[found_bullish % 3]:
-                st.success(f"✅ {sym}")
-                st.caption(f"الحالة: {status}")
-    except:
-        continue
+            # إظهار الصاعد فقط (شراء أو شراء قوي)
+            if "BUY" in rec:
+                with cols[bullish_found % 3]:
+                    st.success(f"✅ {sym}")
+                    st.write(f"الحالة: **{rec}**")
+                bullish_found += 1
+        except:
+            continue
 
-if found_bullish == 0:
-    st.warning("لا توجد أسهم صاعدة حالياً بناءً على التحليل الفني.")
+if bullish_found == 0:
+    st.warning("مفيش إشارات صعود واضحة دلوقتي في السوق.")
 else:
-    st.sidebar.metric("عدد الأسهم الصاعدة", found_bullish)
+    st.sidebar.metric("عدد الأسهم الصاعدة", bullish_found)
 
-st.divider()
-st.info("💡 تم الفحص بناءً على مؤشرات TradingView الفنية.")
+st.sidebar.info("هذا الرادار مبرمج لمراقبة كافة تحديثات TradingView للبورصة المصرية.")
