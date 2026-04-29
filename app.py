@@ -2,21 +2,18 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# 1. إعدادات الصفحة
 st.set_page_config(page_title="Wahba Pro Terminal", layout="wide")
 
-# 2. تصميم CSS احترافي (مؤسسي)
+# تصميم احترافي
 st.markdown("""
     <style>
-    .stApp { background-color: #ffffff; color: #1a1a1a; font-family: 'Segoe UI', sans-serif; }
-    .header { text-align: center; padding: 20px; border-bottom: 2px solid #333; }
-    div.stButton > button { background-color: #333; color: white; width: 100%; border-radius: 4px; padding: 12px; font-weight: bold; }
+    .stApp { background-color: #ffffff; color: #1a1a1a; }
+    div.stButton > button { background-color: #333; color: white; width: 100%; }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='header'><h1>Wahba Pro Market Terminal</h1></div>", unsafe_allow_html=True)
+st.title("Wahba Pro Market Terminal")
 
-# القائمة الكاملة التي زودتني بها
 tickers = [
     "ABUK.CA", "ACGC.CA", "ADCI.CA", "ADIB.CA", "AFMC.CA", "AIH.CA", "AIVC.CA", "AMER.CA", "AMOC.CA", "ANFI.CA", 
     "APME.CA", "ARAB.CA", "ASPI.CA", "ASRE.CA", "ASU.CA", "ATLC.CA", "ATWB.CA", "AUCC.CA", "AXPH.CA", "BINP.CA", 
@@ -34,9 +31,9 @@ tickers = [
     "SYVI.CA", "TAQA.CA", "TMGH.CA", "TRGO.CA", "UEGC.CA", "UNTR.CA", "UPLD.CA", "UTOP.CA", "VIRA.CA", "ZEIRA.CA"
 ]
 
-@st.cache_data(ttl=600)
-def get_data():
-    # تحميل جماعي سريع
+@st.cache_data(ttl=3600)
+def load_all_data():
+    # التحميل الجماعي
     data = yf.download(tickers, period="6mo", interval="1d", group_by='ticker', progress=False)
     results = []
     for ticker in tickers:
@@ -44,17 +41,21 @@ def get_data():
             df = data[ticker]
             if not df.empty and len(df) >= 50:
                 ma50 = df['Close'].rolling(window=50).mean().iloc[-1]
-                if df['Close'].iloc[-1] > ma50:
-                    results.append({
-                        "Symbol": ticker.replace(".CA", ""),
-                        "Price": round(float(df['Close'].iloc[-1]), 2),
-                        "MA50": round(float(ma50), 2)
-                    })
+                results.append({
+                    "Symbol": ticker.replace(".CA", ""),
+                    "Price": round(float(df['Close'].iloc[-1]), 2),
+                    "MA50": round(float(ma50), 2),
+                    "Trend": "Bullish" if df['Close'].iloc[-1] > ma50 else "Bearish"
+                })
         except: continue
     return pd.DataFrame(results)
 
-if st.button("Run Market Terminal"):
-    df = get_data()
-    st.table(df)
+df = load_all_data()
+
+# إضافة زرار فلتر
+show_only_bullish = st.checkbox("إظهار الأسهم الصاعدة فوق الـ 50 فقط")
+
+if show_only_bullish:
+    st.table(df[df['Trend'] == 'Bullish'])
 else:
-    st.info("اضغط للبدء.")
+    st.table(df)
