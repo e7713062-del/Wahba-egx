@@ -5,26 +5,25 @@ import pandas as pd
 # 1. إعدادات الصفحة
 st.set_page_config(page_title="Wahba Pro Terminal", layout="wide")
 
-# 2. تصميم CSS احترافي (مؤسسي)
+# 2. تصميم CSS
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; color: #1a1a1a; font-family: 'Segoe UI', sans-serif; }
     .header-container { text-align: center; padding: 20px; border-bottom: 2px solid #333; margin-bottom: 20px; }
     .new-listing-box { background-color: #f8f9fa; border-left: 5px solid #333; padding: 15px; margin-bottom: 20px; }
-    .stDataFrame { border: 1px solid #dee2e6; border-radius: 4px; }
     div.stButton > button { background-color: #333; color: white; width: 100%; border: none; border-radius: 4px; padding: 12px; font-weight: bold; }
-    div.stButton > button:hover { background-color: #000000; }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. الهيكل
 st.markdown("<div class='header-container'><h1>Wahba Pro Market Terminal</h1></div>", unsafe_allow_html=True)
 
-# 4. قائمة الأسهم
 tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA", "AMOC.CA", "ETEL.CA"]
 
-# 5. منطقة العمليات
 col1, col2 = st.columns([1, 4])
+
+# 3. معالجة البيانات (بشرط وجودها)
+if 'data' not in st.session_state:
+    st.session_state.data = None
 
 with col1:
     if st.button("Run Market Terminal"):
@@ -33,10 +32,8 @@ with col1:
             try:
                 df = yf.download(ticker, period="6mo", interval="1d", progress=False)
                 if not df.empty:
-                    # اكتشاف الأسهم الجديدة (بيانات أقل من 50 يوم)
                     is_new = len(df) < 50
                     ma50 = df['Close'].rolling(window=50).mean().iloc[-1] if not is_new else 0
-                    
                     results.append({
                         "Symbol": ticker.replace(".CA", ""),
                         "Price": round(float(df['Close'].iloc[-1]), 2),
@@ -45,16 +42,21 @@ with col1:
                     })
             except: continue
         st.session_state.data = pd.DataFrame(results)
+        st.rerun() # تحديث الصفحة لعرض البيانات فوراً
 
 with col2:
-    if 'data' in st.session_state:
+    if st.session_state.data is not None:
         df = st.session_state.data
-        
-        # عرض الأسهم الجديدة في صندوق خاص
-        new = df[df['Status'] == 'NEW']
-        if not new.empty:
-            st.markdown("<div class='new-listing-box'><h3>New Listings</h3></div>", unsafe_allow_html=True)
-            st.table(new)
+        if not df.empty:
+            # فصل البيانات بأمان
+            new = df[df['Status'] == 'NEW']
+            stable = df[df['Status'] == 'STABLE']
             
-        st.subheader("Market Analysis (MA50)")
-        st.table(df[df['Status'] == 'STABLE'])
+            if not new.empty:
+                st.markdown("<div class='new-listing-box'><h3>New Listings</h3></div>", unsafe_allow_html=True)
+                st.table(new)
+            
+            st.subheader("Market Analysis (MA50)")
+            st.table(stable)
+    else:
+        st.info("اضغط على Run Market Terminal لبدء تحليل السوق.")
