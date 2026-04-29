@@ -17,7 +17,7 @@ assets = {
 
 for name, sym in assets.items():
     try:
-        # الربط مع تريدنج فيو (حل مشكلة فشل البيانات)
+        # الربط مع تريدنج فيو
         handler = TA_Handler(
             symbol=sym,
             screener="egypt",
@@ -27,7 +27,7 @@ for name, sym in assets.items():
         analysis = handler.get_analysis()
         status = analysis.summary['RECOMMENDATION']
 
-        # تحديد النتيجة صاعد أو هابط
+        # تحديد النتيجة
         if "BUY" in status:
             result = "صاعد 🟢"
             color = "#00c853"
@@ -38,7 +38,6 @@ for name, sym in assets.items():
             result = "عرضي 🟡"
             color = "#ffca28"
 
-        # عرض النتيجة بوضوح
         st.subheader(f"{name}:")
         st.markdown(f"<h1 style='color:{color};'>{result}</h1>", unsafe_allow_html=True)
         st.divider()
