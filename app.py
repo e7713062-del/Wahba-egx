@@ -3,72 +3,75 @@ import yfinance as yf
 import pandas as pd
 
 # 1. إعدادات الصفحة
-st.set_page_config(page_title="Wahba Trading Pro", layout="wide")
+st.set_page_config(page_title="Wahba Pro Scanner", layout="wide")
 
-# 2. تصميم CSS احترافي (ستايل TradingView)
+# 2. تصميم CSS احترافي (أبيض ومريح للعين)
 st.markdown("""
     <style>
-    .stApp { background-color: #131722; color: #d1d4dc; }
+    .stApp { background-color: #ffffff; color: #1a1a1a; font-family: 'Segoe UI', sans-serif; }
     .header-style { 
-        text-align: center; padding: 15px; 
-        background: #1e222d; border-bottom: 2px solid #2962ff;
-        margin-bottom: 20px; color: #ffffff;
+        text-align: center; padding: 25px; 
+        background: #f8f9fa; border-bottom: 2px solid #333333;
+        margin-bottom: 30px; 
     }
-    .ad-banner { 
-        background: #1e222d; border: 1px dashed #2962ff; 
-        padding: 10px; text-align: center; margin-bottom: 20px;
-        color: #888; font-size: 0.9em;
+    div.stButton > button { 
+        background-color: #333333; color: white; width: 100%;
+        border: none; border-radius: 4px; font-weight: bold; padding: 12px;
     }
-    .buy-signal { color: #00ff88; font-weight: bold; }
+    div.stButton > button:hover { background-color: #000000; }
+    .ad-slot { 
+        background: #f8f9fa; border: 1px solid #dee2e6; 
+        padding: 15px; text-align: center; color: #666;
+        border-radius: 4px; margin-top: 20px; font-size: 0.8em;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# 3. العنوان والمساحة الإعلانية
-st.markdown("<div class='header-style'><h1>📈 Wahba EGX - Swing Trading Scanner</h1></div>", unsafe_allow_html=True)
-st.markdown("<div class='ad-banner'>📢 مساحة إعلانية - للإعلان تواصل معنا عبر تليجرام/إيميل</div>", unsafe_allow_html=True)
+# 3. العنوان
+st.markdown("<div class='header-style'><h1>Wahba Pro Market Scanner</h1></div>", unsafe_allow_html=True)
 
-# 4. قائمة الأسهم
+# 4. قائمة الأسهم (شاملة الـ 30 والـ 70)
 tickers = [
-    "ABUK", "ACGC", "ADCI", "ADIB", "AFMC", "AIH", "AIVC", "AMER", "AMOC", "ANFI", "APME", 
-    "ARAB", "ASPI", "ASRE", "ASU", "ATLC", "ATWB", "AUCC", "AXPH", "BINP", "BINV", "BIOC", 
-    "BLGN", "BMOH", "BTFH", "CAED", "CAFR", "CAPW", "CCAP", "CERA", "CFGH", "CHWP", "CICH", 
-    "CIRA", "CLHO", "CNCR", "CNFR", "COMI", "COPR", "CSAG", "CVLC", "DAPH", "DCRC", "DCTL", 
-    "DOMT", "EALR", "EATM", "EBSC", "ECAP", "ECHG", "ECOS", "EDAB", "EDIN", "EFID", "EGAS", 
-    "EGBE", "EGCH", "EGDC", "EGDH", "EGFI", "EGID", "EGLI", "EGSG", "EGTB", "EHDR", "EIMC", 
-    "EIPC", "EKHO", "ELKA", "ELSH", "EMFD", "ENGC", "EPCO", "ESIC", "ESRS", "ETEL", "EXPA", 
-    "FAHL", "FAIT", "FCIE", "FIIT", "FWRY", "GTHE", "GZCC", "HELI", "HERO", "HRHO", "IFAP", 
-    "IHCX", "INFI", "IRGC", "ISDI", "ISPH", "JUFO", "KABO", "KIMA", "LREI", "MACRO", "MASR", 
-    "MDWA", "MEPA", "MFPC", "MNHD", "MPCO", "MTIE", "OBET", "ODPD", "ODIN", "OIH", "OPAT", 
-    "ORAS", "ORHD", "ORWE", "PHDC", "PIOH", "PRDC", "PSDC", "QNBA", "RAFT", "RMDA", "RTVC", 
-    "SAEI", "SCFM", "SEMO", "SHAC", "SIAG", "SKPC", "SPHT", "SVCP", "SWDY", "SYVI", "TAQA", 
-    "TMGH", "TRGO", "UEGC", "UNTR", "UPLD", "UTOP", "VIRA", "ZEIRA"
+    "ABUK", "ACGC", "ADIB", "AMOC", "COMI", "EKHO", "ETEL", "FWRY", "HELI", "HRHO", 
+    "MNHD", "ORAS", "ORWE", "PHDC", "RMDA", "SWDY", "TAQA", "TMGH", "CIRA", "QNBA",
+    "ESRS", "SKPC", "MFPC", "EGCH", "KIMA", "JUFO", "DOMT", "CCAP", "OIH", "BTFH",
+    "ADCI", "AIH", "AIVC", "AMER", "ANFI", "APME", "ARAB", "ASPI", "ASRE", "ASU"
 ]
 tickers_ca = [f"{t}.CA" for t in tickers]
 
-# 5. زر المسح
-if st.button("🚀 تصفية الفرص القوية (سويـنج)"):
-    opportunities = []
-    with st.spinner('جاري فحص إغلاقات السوق...'):
-        for ticker in tickers_ca:
+# 5. منطقة التحكم والتحليل
+col1, col2 = st.columns([1, 3])
+
+with col1:
+    st.subheader("Control Panel")
+    if st.button("Run Daily Swing Scan"):
+        results = []
+        progress = st.progress(0)
+        for i, ticker in enumerate(tickers_ca):
             try:
-                # الاعتماد على إغلاق اليوم (Daily Close)
+                # الاعتماد على الإغلاق اليومي (Daily Close)
                 df = yf.download(ticker, period="6mo", interval="1d", progress=False)
-                if len(df) >= 50:
-                    df['MA20'] = df['Close'].rolling(window=20).mean()
+                if not df.empty and len(df) >= 50:
                     df['MA50'] = df['Close'].rolling(window=50).mean()
                     
-                    # شرط السوينج: إغلاق فوق المتوسطات
-                    if df['Close'].iloc[-1] > df['MA50'].iloc[-1] and df['MA20'].iloc[-1] > df['MA50'].iloc[-1]:
-                        opportunities.append({
-                            "السهم": ticker.replace(".CA", ""),
-                            "الاتجاه": "صاعد",
-                            "الإشارة": "✅ شراء (قوية)"
+                    # الفلتر: الإغلاق الحالي فوق الـ MA50
+                    if df['Close'].iloc[-1] > df['MA50'].iloc[-1]:
+                        results.append({
+                            "Ticker": ticker.replace(".CA", ""),
+                            "Close Price": round(float(df['Close'].iloc[-1]), 2),
+                            "MA50": round(float(df['MA50'].iloc[-1]), 2)
                         })
+                progress.progress((i + 1) / len(tickers_ca))
             except: continue
+        
+        st.session_state.results = pd.DataFrame(results)
     
-    # 6. عرض النتائج
-    if opportunities:
-        results_df = pd.DataFrame(opportunities)
-        st.table(results_df)
+    st.markdown("<div class='ad-slot'>Advertising Space Available</div>", unsafe_allow_html=True)
+
+with col2:
+    st.subheader("Market Analysis Results")
+    if 'results' in st.session_state and not st.session_state.results.empty:
+        st.table(st.session_state.results)
+        st.write("Scan complete. Please provide this table for further MA20 analysis.")
     else:
-        st.warning("لا توجد فرص شراء قوية بناءً على إغلاق اليوم، السوق في مرحلة تجميع.")
+        st.info("Scanner is ready. Click 'Run Daily Swing Scan' to start.")
