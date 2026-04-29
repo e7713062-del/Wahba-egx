@@ -1,35 +1,26 @@
 import streamlit as st
 from tradingview_ta import TA_Handler, Interval
 
-st.set_page_config(page_title="Wahba Pro | الأسهم الصاعدة", layout="wide")
+st.set_page_config(page_title="Wahba Pro | فلتر الأسهم", layout="wide")
 
-st.title("🚀 فلتر الأسهم الصاعدة لبكرة")
-st.write("الأسهم اللي ظاهرة تحت هي فقط اللي واخدة إشارة 'صعود' من تريدنج فيو")
+st.title("🔍 فلتر الأسهم الصاعدة (Wahba Pro)")
+st.write("يتم الآن فحص أسهم البورصة المصرية لإظهار الفرص الصاعدة فقط...")
 
-# قائمة موسعة لأهم أسهم البورصة المصرية
-egypt_stocks = {
-    "المؤشر الثلاثيني": "EGX30",
-    "المؤشر السبعيني": "EGX70",
-    "البنك التجاري الدولي": "COMI",
-    "فوري": "FWRY",
-    "طلعت مصطفى": "TMGH",
-    "السويدي الكتريك": "SWDY",
-    "إي فاينانس": "EFIH",
-    "أبو قير للأسمدة": "ABUK",
-    "مصر للألومنيوم": "EGAL",
-    "بالم هيلز": "PHDC",
-    "هيرميس": "HRHO",
-    "حديد عز": "ESRS",
-    "النساجون الشرقيون": "ORWE",
-    "سيدي كرير": "SKPC",
-    "بلتون": "BTEL",
-    "كيما": "EGCH"
-}
+# قائمة بأهم رموز الأسهم المصرية (تقدر تضيف لحد 160 رمز بنفس الطريقة)
+symbols = [
+    "EGX30", "EGX70", "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", 
+    "EGAL", "PHDC", "HRHO", "ESRS", "ORWE", "SKPC", "BTEL", "EGCH",
+    "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO", "CANA", "ESGI",
+    "GBCO", "CCAP", "AUTO", "MNHD", "PORT", "TALA", "ETEL"
+    # ضيف باقي الرموز هنا داخل القائمة بنفس النمط
+]
 
-# عداد للأسهم الصاعدة
 found_bullish = 0
 
-for name, sym in egypt_stocks.items():
+# عرض النتائج في شكل أعمدة عشان الزحمة
+cols = st.columns(3)
+
+for i, sym in enumerate(symbols):
     try:
         handler = TA_Handler(
             symbol=sym,
@@ -40,20 +31,20 @@ for name, sym in egypt_stocks.items():
         analysis = handler.get_analysis()
         status = analysis.summary['RECOMMENDATION']
 
-        # الفلتر: إظهار الصاعد فقط (BUY أو STRONG_BUY)
+        # فلترة: إظهار الصاعد فقط (BUY أو STRONG_BUY)
         if "BUY" in status:
             found_bullish += 1
-            with st.container():
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.subheader(f"{name} ({sym})")
-                with col2:
-                    st.markdown(f"<h2 style='color:#00c853;'>صاعد 🟢</h2>", unsafe_allow_html=True)
-                st.divider()
+            # توزيع النتائج على الأعمدة
+            with cols[found_bullish % 3]:
+                st.success(f"✅ {sym}")
+                st.caption(f"الحالة: {status}")
     except:
         continue
 
 if found_bullish == 0:
-    st.warning("مفيش أسهم واخدة إشارة صعود حالياً بناءً على إغلاق اليوم.")
+    st.warning("لا توجد أسهم صاعدة حالياً بناءً على التحليل الفني.")
+else:
+    st.sidebar.metric("عدد الأسهم الصاعدة", found_bullish)
 
-st.info(f"تم فحص {len(egypt_stocks)} سهم، ولقينا {found_bullish} سهم في حالة صعود.")
+st.divider()
+st.info("💡 تم الفحص بناءً على مؤشرات TradingView الفنية.")
