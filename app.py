@@ -3,9 +3,9 @@ from tradingview_ta import TA_Handler, Interval
 
 st.set_page_config(page_title="Wahba Pro: Predictor")
 
-st.title("🚀 توقعات السوق المصري لبكرة")
+st.title("🚀 توقعات البورصة المصرية لبكرة")
 
-# قائمة الأسهم
+# قائمة الأسهم والرموز
 assets = {
     "مؤشر EGX 30": "EGX30",
     "مؤشر EGX 70": "EGX70",
@@ -16,7 +16,7 @@ assets = {
 
 for name, sym in assets.items():
     try:
-        # الربط مع تريدنج فيو مصر
+        # الربط مع تريدنج فيو
         handler = TA_Handler(
             symbol=sym,
             screener="egypt",
@@ -26,7 +26,7 @@ for name, sym in assets.items():
         analysis = handler.get_analysis()
         status = analysis.summary['RECOMMENDATION']
 
-        # تحويل المصطلحات لكلمات عربي بسيطة
+        # تحديد النتيجة صاعد أو هابط
         if "BUY" in status:
             result = "صاعد 🟢"
             color = "#00c853"
@@ -34,10 +34,10 @@ for name, sym in assets.items():
             result = "هابط 🔴"
             color = "#ff1744"
         else:
-            result = "عرضي / غير واضح 🟡"
+            result = "متذبذب 🟡"
             color = "#ffca28"
 
-        # عرض النتيجة
+        # عرض النتيجة بشكل واضح
         st.subheader(f"{name}:")
         st.markdown(f"<h1 style='color:{color};'>{result}</h1>", unsafe_allow_html=True)
         st.divider()
@@ -45,4 +45,4 @@ for name, sym in assets.items():
     except:
         st.error(f"مشكلة في جلب بيانات {name}")
 
-st.info("💡 التوقع ده مبني على مؤشرات فنية (زي RSI و MACD) لآخر إغلاق في السوق.")
+st.info("💡 التوقعات دي بناءً على التحليل الفني لتريدنج فيو.")
