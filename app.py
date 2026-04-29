@@ -1,63 +1,64 @@
 import streamlit as st
 import yfinance as yf
+import pandas as pd
 
-# إعداد الصفحة
-st.set_page_config(page_title="Wahba Pro: Market Hub", layout="wide")
-st.title("📊 تحليل مؤشرات البورصة المصرية")
+st.set_page_config(page_title="Wahba Pro: Predictor", layout="wide")
+st.title("📊 توقعات حركة السوق بناءً على الإغلاق")
 
-# رموز المؤشرات (الثلاثيني والسبعيني)
+# رموز المؤشرات
 indices = {
     "EGX 30 (الثلاثيني)": "^CASE30",
     "EGX 70 (السبعيني)": "EGX70.CA"
 }
 
-def get_index_data(symbol):
+def analyze_closing(symbol):
     try:
-        # جلب بيانات آخر 5 أيام لضمان وجود بيانات حتى لو السوق قافل
-        idx = yf.Ticker(symbol)
-        df = idx.history(period="5d") 
+        # جلب بيانات كافية لحساب المتوسط (آخر 20 يوم)
+        df = yf.download(symbol, period="20d", interval="1d", progress=False)
+        if df.empty: return None
         
-        if df.empty:
-            return None
+        last_close = float(df['Close'].iloc[-1])
+        prev_close = float(df['Close'].iloc[-2])
+        high = float(df['High'].iloc[-1])
+        low = float(df['Low'].iloc[-1])
+        ma5 = float(df['Close'].rolling(5).mean().iloc[-1]) # متوسط 5 أيام
         
-        # أخذ آخر سطر (أحدث بيانات)
-        last_row = df.iloc[-1]
-        last_price = float(last_row['Close'])
-        high = float(last_row['High'])
-        low = float(last_row['Low'])
-        open_p = float(last_row['Open'])
-        change = ((last_price - open_p) / open_p) * 100
+        change = ((last_close - prev_close) / prev_close) * 100
         
-        return last_price, high, low, change
+        # منطق التوقع:
+        # 1. إذا السعر فوق المتوسط
+        # 2. إذا الإغلاق في الثلث العلوي من شمعة اليوم
+        position_in_range = (last_close - low) / (high - low) if (high - low) > 0 else 0.5
+        
+        prediction = "إيجابي (صاعد 🟢)" if (last_close > ma5 and position_in_range > 0.6) else "سلبي (حذر 🔴)"
+        if 0.4 <= position_in_range <= 0.6: prediction = "عرضي (متذبذب 🟡)"
+            
+        return last_close, change, prediction, position_in_range
     except:
         return None
 
-# عرض المؤشرات
 for name, symbol in indices.items():
-    data = get_index_data(symbol)
+    data = analyze_closing(symbol)
     
-    col1, col2, col3 = st.columns([2, 2, 4])
-    
-    with col1:
-        st.subheader(name)
-        
     if data:
-        last, high, low, change = data
+        price, change, pred, pos = data
+        col1, col2, col3 = st.columns([2, 2, 3])
+        
+        with col1:
+            st.subheader(name)
+            st.write(f"إغلاق اليوم: **{price:,.2f}**")
+            
         with col2:
-            color = "green" if change >= 0 else "red"
-            st.metric("المستوى", f"{last:,.2f}", f"{change:+.2f}%")
+            st.metric("التغير اليومي", f"{change:+.2f}%")
+            st.write(f"التوقع للغد: **{pred}**")
             
         with col3:
-            # شريط الأداء اليومي
-            diff = high - low
-            progress = ((last - low) / diff) if diff > 0 else 0.5
-            st.write(f"المدى اليومي: {low:,.0f} - {high:,.0f}")
-            st.progress(min(max(progress, 0.0), 1.0))
-    else:
-        with col2:
-            st.error("فشل جلب البيانات")
-            st.caption("تأكد من اتصال الإنترنت أو رمز المؤشر")
+            st.write("موقع الإغلاق بالنسبة لليوم (قوة المشترين):")
+            st.progress(min(max(pos, 0.0), 1.0))
+            st.caption("اليمين = إغلاق عند القمة (قوي) | اليسار = إغلاق عند القاع (ضعيف)")
             
-    st.divider()
+        st.divider()
+    else:
+        st.error(f"فشل جلب بيانات {name}")
 
-st.info("ملاحظة: البيانات قد تتأخر حتى 15 دقيقة حسب مصدر Yahoo Finance.")
+st.warning("⚠️ هذا التوقع برمجي بناءً على الإغلاق فقط، ولا يعتبر نصيحة مالية. السوق دائماً متقلب!")
