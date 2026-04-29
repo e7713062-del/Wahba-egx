@@ -36,4 +36,3 @@ with st.spinner('جاري جلب بيانات السوق...'):
                 st.warning(f"لا توجد بيانات متاحة للسهم: {ticker}")
         except Exception as e:
             st.error(f"خطأ في تحميل {ticker}: {e}")
-            
