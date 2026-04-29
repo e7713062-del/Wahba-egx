@@ -1,45 +1,30 @@
 import streamlit as st
-import pandas as pd
 import yfinance as yf
-import plotly.graph_objects as go
+import pandas as pd
 
-# 1. إعدادات الصفحة - تصميم مؤسسي خفيف
-st.set_page_config(page_title="Wahba Pro Terminal", layout="wide")
+st.set_page_config(page_title="Wahba Pro", layout="centered")
 
-st.markdown("""
-    <style>
-    .stApp { background-color: #ffffff; color: #000000; font-family: sans-serif; }
-    .header { text-align: center; padding: 20px; border-bottom: 2px solid #000; }
-    </style>
-""", unsafe_allow_html=True)
+st.title("Wahba Pro Market")
 
-st.markdown("<div class='header'><h1>Wahba Pro Market Terminal</h1></div>", unsafe_allow_html=True)
+# تعريف الأسهم
+tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "AMOC.CA"]
 
-# 2. قائمة الأسهم
-tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA", "AMOC.CA"]
-
-# 3. سحب البيانات بطريقة مباشرة (بدون موديولات إضافية)
-if st.button("تحديث السوق"):
-    data = yf.download(tickers, period="6mo", interval="1d", group_by='ticker', progress=False)
-    
+# زر التحديث
+if st.button("تحديث الأسعار"):
     for t in tickers:
         try:
-            df = data[t]
+            # تحميل السهم الواحد مباشرة (أكثر استقراراً)
+            df = yf.Ticker(t).history(period="3mo")
             if not df.empty:
-                last_price = round(float(df['Close'].iloc[-1]), 2)
-                ma50 = round(float(df['Close'].rolling(window=50).mean().iloc[-1]), 2)
+                price = round(df['Close'].iloc[-1], 2)
+                ma50 = round(df['Close'].rolling(window=50).mean().iloc[-1], 2)
                 
-                # عرض البيانات في أعمدة منظمة
-                col1, col2, col3 = st.columns([2, 1, 1])
-                col1.write(f"### {t.replace('.CA', '')}")
-                col2.write(f"السعر: {last_price}")
-                col3.write(f"MA50: {ma50}")
-                
-                # زر لعرض الرسم البياني (بدون تعقيد)
-                if st.button(f"رسم بياني {t}", key=t):
-                    fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'])])
-                    st.plotly_chart(fig, use_container_width=True)
-        except:
-            continue
+                # عرض البيانات
+                st.write(f"---")
+                st.write(f"**السهم:** {t.replace('.CA', '')}")
+                st.write(f"السعر: {price} | المتوسط (MA50): {ma50}")
+        except Exception as e:
+            st.error(f"مشكلة في سحب بيانات {t}")
+
 else:
-    st.info("اضغط على تحديث السوق لعرض الأسعار.")
+    st.info("اضغط الزر للبدء.")
