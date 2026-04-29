@@ -1,23 +1,36 @@
 import streamlit as st
 from tradingview_ta import TA_Handler, Interval
 
-# إعدادات الصفحة
-st.set_page_config(page_title="Wahba Pro", layout="wide")
-st.title("🚀 رادار البورصة المصرية - Wahba Pro")
+st.set_page_config(page_title="Wahba Pro | الأسهم الصاعدة", layout="wide")
 
-# قائمة الأسهم والرموز في تريدنج فيو
-assets = {
-    "مؤشر EGX 30": "EGX30",
-    "مؤشر EGX 70": "EGX70",
+st.title("🚀 فلتر الأسهم الصاعدة لبكرة")
+st.write("الأسهم اللي ظاهرة تحت هي فقط اللي واخدة إشارة 'صعود' من تريدنج فيو")
+
+# قائمة موسعة لأهم أسهم البورصة المصرية
+egypt_stocks = {
+    "المؤشر الثلاثيني": "EGX30",
+    "المؤشر السبعيني": "EGX70",
     "البنك التجاري الدولي": "COMI",
     "فوري": "FWRY",
     "طلعت مصطفى": "TMGH",
-    "السويدي الكتريك": "SWDY"
+    "السويدي الكتريك": "SWDY",
+    "إي فاينانس": "EFIH",
+    "أبو قير للأسمدة": "ABUK",
+    "مصر للألومنيوم": "EGAL",
+    "بالم هيلز": "PHDC",
+    "هيرميس": "HRHO",
+    "حديد عز": "ESRS",
+    "النساجون الشرقيون": "ORWE",
+    "سيدي كرير": "SKPC",
+    "بلتون": "BTEL",
+    "كيما": "EGCH"
 }
 
-for name, sym in assets.items():
+# عداد للأسهم الصاعدة
+found_bullish = 0
+
+for name, sym in egypt_stocks.items():
     try:
-        # الربط مع تريدنج فيو (مصر)
         handler = TA_Handler(
             symbol=sym,
             screener="egypt",
@@ -27,22 +40,20 @@ for name, sym in assets.items():
         analysis = handler.get_analysis()
         status = analysis.summary['RECOMMENDATION']
 
-        # الخلاصة: صاعد أو هابط
+        # الفلتر: إظهار الصاعد فقط (BUY أو STRONG_BUY)
         if "BUY" in status:
-            result = "صاعد 🟢"
-            color = "#00c853"
-        elif "SELL" in status:
-            result = "هابط 🔴"
-            color = "#ff1744"
-        else:
-            result = "عرضي / غير واضح 🟡"
-            color = "#ffca28"
+            found_bullish += 1
+            with st.container():
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.subheader(f"{name} ({sym})")
+                with col2:
+                    st.markdown(f"<h2 style='color:#00c853;'>صاعد 🟢</h2>", unsafe_allow_html=True)
+                st.divider()
+    except:
+        continue
 
-        st.subheader(f"{name}:")
-        st.markdown(f"<h1 style='color:{color};'>{result}</h1>", unsafe_allow_html=True)
-        st.divider()
+if found_bullish == 0:
+    st.warning("مفيش أسهم واخدة إشارة صعود حالياً بناءً على إغلاق اليوم.")
 
-    except Exception:
-        st.error(f"عفواً.. تعذر جلب بيانات {name}")
-
-st.info("💡 هذا التوقع مبني على التحليل الفني لآخر إغلاق.")
+st.info(f"تم فحص {len(egypt_stocks)} سهم، ولقينا {found_bullish} سهم في حالة صعود.")
