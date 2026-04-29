@@ -2,10 +2,9 @@ import streamlit as st
 import time
 from tradingview_ta import TA_Handler, Interval
 
-st.set_page_config(page_title="Wahba Pro | Radar", layout="wide")
+st.set_page_config(page_title="Wahba Pro", layout="wide")
 
 st.title("🛡️ Wahba Pro: رادار الأسهم الصاعدة")
-st.write("الفحص يعتمد على اختراق متوسط 50 يوم (إغلاق يومي).")
 
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", 
@@ -21,7 +20,6 @@ if st.button('إبدأ فحص السوق الآن 🔄'):
     for idx, sym in enumerate(STOCKS):
         try:
             progress_bar.progress((idx + 1) / len(STOCKS))
-            
             handler = TA_Handler(
                 symbol=sym,
                 screener="egypt",
@@ -29,13 +27,13 @@ if st.button('إبدأ فحص السوق الآن 🔄'):
                 interval=Interval.INTERVAL_1_DAY,
                 timeout=7
             )
-            
             analysis = handler.get_analysis()
-            close_price = analysis.indicators["close"]
-            sma50 = analysis.indicators.get("SMA50")
-
-            # الشرط: السعر فوق المتوسط 50
-            if sma50 and close_price >= sma50:
+            
+            # التعديل هنا: إذا كانت التوصية العامة هي شراء
+            # ده هيخلي الرادار يجيب لك الأسهم الصاعدة فعلياً
+            rec = analysis.summary['RECOMMENDATION']
+            
+            if "BUY" in rec:
                 bullish_list.append(sym)
             
             time.sleep(0.05)
@@ -45,13 +43,10 @@ if st.button('إبدأ فحص السوق الآن 🔄'):
     progress_bar.empty()
 
     if bullish_list:
-        st.success(f"تم رصد {len(bullish_list)} فرصة صاعدة")
-        
-        # عرض النتائج في أعمدة بشكل أنيق
-        cols = st.columns(4)
+        st.success(f"تم رصد {len(bullish_list)} سهم صاعد")
+        cols = st.columns(3)
         for i, stock_name in enumerate(bullish_list):
-            with cols[i % 4]:
-                st.info(f"📈 **{stock_name}**\n\n سهم صاعد")
+            with cols[i % 3]:
+                st.success(f"📈 **{stock_name}**\n\n سهم صاعد")
     else:
-        st.warning("لا توجد أسهم صاعدة حالياً.")
-        
+        st.warning("لا توجد أسهم صاعدة حالياً في البورصة المصرية حسب التحليل الفني.")
