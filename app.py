@@ -2,12 +2,11 @@ import streamlit as st
 from tradingview_ta import TA_Handler, Interval
 import time
 
-st.set_page_config(page_title="Wahba Pro | رادار شامل", layout="wide")
+st.set_page_config(page_title="Wahba Pro | SMA 50", layout="wide")
 
-st.title("🛡️ Wahba Pro: رادار البورصة المصرية الذكي")
-st.write("فحص آلي وتلقائي لأسهم البورصة المصرية.")
+st.title("🛡️ Wahba Pro: رادار المتوسطات المتحركة")
+st.write("الفحص الآن يعتمد فقط على اختراق السعر لمتوسط 50 يوم (SMA50)")
 
-# قائمة الأسهم (يفضل وضعها خارج الدالة لسهولة التعديل)
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", 
     "HRHO", "ESRS", "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", 
@@ -15,53 +14,47 @@ STOCKS = [
     "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH", "RMDA", "CIRA"
 ]
 
-if st.button('إبدأ فحص السوق الآن'):
+if st.button('إبدأ فحص اختراق متوسط 50'):
     bullish_stocks = []
     progress_bar = st.progress(0)
-    status_text = st.empty()
-    results_area = st.container() # مكان مخصص لعرض النتائج فور ظهورها
-
+    
     for idx, sym in enumerate(STOCKS):
         try:
-            # تحديث شريط التقدم
-            progress = (idx + 1) / len(STOCKS)
-            progress_bar.progress(progress)
-            status_text.text(f"جاري فحص: {sym}")
-
+            progress_bar.progress((idx + 1) / len(STOCKS))
+            
             handler = TA_Handler(
                 symbol=sym,
                 screener="egypt",
                 exchange="EGX",
                 interval=Interval.INTERVAL_1_DAY,
-                timeout=10 # إضافة وقت انتظار أطول قليلاً لمنع التعليق
+                timeout=10
             )
             
             analysis = handler.get_analysis()
-            rec = analysis.summary['RECOMMENDATION']
             
-            if "BUY" in rec:
-                bullish_stocks.append({"symbol": sym, "status": rec})
+            # هنا بنسحب سعر الإغلاق الحالي وقيمة المتوسط 50
+            current_price = analysis.indicators["close"]
+            sma50 = analysis.indicators["SMA50"]
             
-            # إضافة فاصل زمني صغير جداً لتجنب الحظر (0.1 ثانية)
+            # الشرط: السعر الحالي أكبر من متوسط 50 (اتجاه صاعد)
+            if current_price > sma50:
+                bullish_stocks.append({
+                    "symbol": sym, 
+                    "price": current_price, 
+                    "sma50": sma50
+                })
+            
             time.sleep(0.1)
-
-        except Exception as e:
+        except:
             continue
 
-    status_text.empty()
-    progress_bar.empty()
-
     if bullish_stocks:
-        st.success(f"تم العثور على {len(bullish_stocks)} سهم بإشارة صعود")
+        st.success(f"لقينا {len(bullish_stocks)} سهم فوق متوسط 50 يوم")
         cols = st.columns(4)
         for idx, s in enumerate(bullish_stocks):
             with cols[idx % 4]:
-                color = "chartreuse" if "STRONG" in s['status'] else "white"
-                st.markdown(f"""
-                <div style="border:1px solid #ccc; padding:10px; border-radius:10px; text-align:center;">
-                    <h3 style="color:{color};">{s['symbol']}</h3>
-                    <p>{s['status']}</p>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"🟢 **{s['symbol']}**")
+                st.write(f"السعر: {s['price']:.2f}")
+                st.caption(f"SMA50: {s['sma50']:.2f}")
     else:
-        st.warning("لا توجد إشارات صعود قوية حالياً. حاول مرة أخرى لاحقاً.")
+        st.warning("مفيش أسهم فوق المتوسط حالياً.")
