@@ -2,63 +2,73 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-st.set_page_config(page_title="وهبة للمحلل مصطفي تامر", layout="wide")
+# 1. إعدادات الصفحة
+st.set_page_config(page_title="Wahba Trading Pro", layout="wide")
 
-st.title("💎 منصة وهبة للتحليل المالي")
-st.markdown("### 👨‍💼 تطوير: المحلل مصطفي تامر")
-st.write("---")
+# 2. تصميم CSS احترافي (ستايل TradingView)
+st.markdown("""
+    <style>
+    .stApp { background-color: #131722; color: #d1d4dc; }
+    .header-style { 
+        text-align: center; padding: 15px; 
+        background: #1e222d; border-bottom: 2px solid #2962ff;
+        margin-bottom: 20px; color: #ffffff;
+    }
+    .ad-banner { 
+        background: #1e222d; border: 1px dashed #2962ff; 
+        padding: 10px; text-align: center; margin-bottom: 20px;
+        color: #888; font-size: 0.9em;
+    }
+    .buy-signal { color: #00ff88; font-weight: bold; }
+    </style>
+""", unsafe_allow_html=True)
 
-symbols = [
-    "ABUK.CA", "ACGC.CA", "ADCI.CA", "ADIB.CA", "AFMC.CA", "AIH.CA", "AIVC.CA", "AMER.CA", "AMOC.CA", 
-    "ANFI.CA", "APME.CA", "ARAB.CA", "ASPI.CA", "ASRE.CA", "ASU.CA", "ATLC.CA", "ATWB.CA", "AUCC.CA", 
-    "AXPH.CA", "BINP.CA", "BINV.CA", "BIOC.CA", "BLGN.CA", "BMOH.CA", "BTFH.CA", "CAED.CA", "CAFR.CA", 
-    "CAPW.CA", "CCAP.CA", "CERA.CA", "CFGH.CA", "CHWP.CA", "CICH.CA", "CIRA.CA", "CLHO.CA", "CNCR.CA", 
-    "CNFR.CA", "COMI.CA", "COPR.CA", "CSAG.CA", "CVLC.CA", "DAPH.CA", "DCRC.CA", "DCTL.CA", "DOMT.CA", 
-    "EALR.CA", "EATM.CA", "EBSC.CA", "ECAP.CA", "ECHG.CA", "ECOS.CA", "EDAB.CA", "EDIN.CA", "EFID.CA", 
-    "EGAS.CA", "EGBE.CA", "EGCH.CA", "EGDC.CA", "EGDH.CA", "EGFI.CA", "EGID.CA", "EGLI.CA", "EGSG.CA", 
-    "EGTB.CA", "EHDR.CA", "EIMC.CA", "EIPC.CA", "EKHOA.CA", "ELKA.CA", "ELSH.CA", "EMFD.CA", "ENGC.CA", 
-    "EPCO.CA", "ESIC.CA", "ESRS.CA", "ETEL.CA", "EXPA.CA", "FAHL.CA", "FAIT.CA", "FCIE.CA", "FIIT.CA", 
-    "FWRY.CA", "GTHE.CA", "GZCC.CA", "HELI.CA", "HERO.CA", "HRHO.CA", "IFAP.CA", "IHCX.CA", "INFI.CA", 
-    "IRGC.CA", "ISDI.CA", "ISPH.CA", "JUFO.CA", "KABO.CA", "KIMA.CA", "LREI.CA", "MACRO.CA", "MASR.CA", 
-    "MDWA.CA", "MEPA.CA", "MFPC.CA", "MNHD.CA", "MPCO.CA", "MTIE.CA", "OBET.CA", "ODPD.CA", "ODIN.CA", 
-    "OIH.CA", "OPAT.CA", "ORAS.CA", "ORHD.CA", "ORWE.CA", "PHDC.CA", "PIOH.CA", "PRDC.CA", "PSDC.CA", 
-    "QNBA.CA", "RAFT.CA", "RMDA.CA", "RTVC.CA", "SAEI.CA", "SCFM.CA", "SEMO.CA", "SHAC.CA", "SIAG.CA", 
-    "SKPC.CA", "SPHT.CA", "SVCP.CA", "SWDY.CA", "SYVI.CA", "TAQA.CA", "TMGH.CA", "TRGO.CA", "UEGC.CA", 
-    "UNTR.CA", "UPLD.CA", "UTOP.CA", "VIRA.CA", "ZEIRA.CA"
+# 3. العنوان والمساحة الإعلانية
+st.markdown("<div class='header-style'><h1>📈 Wahba EGX - Swing Trading Scanner</h1></div>", unsafe_allow_html=True)
+st.markdown("<div class='ad-banner'>📢 مساحة إعلانية - للإعلان تواصل معنا عبر تليجرام/إيميل</div>", unsafe_allow_html=True)
+
+# 4. قائمة الأسهم
+tickers = [
+    "ABUK", "ACGC", "ADCI", "ADIB", "AFMC", "AIH", "AIVC", "AMER", "AMOC", "ANFI", "APME", 
+    "ARAB", "ASPI", "ASRE", "ASU", "ATLC", "ATWB", "AUCC", "AXPH", "BINP", "BINV", "BIOC", 
+    "BLGN", "BMOH", "BTFH", "CAED", "CAFR", "CAPW", "CCAP", "CERA", "CFGH", "CHWP", "CICH", 
+    "CIRA", "CLHO", "CNCR", "CNFR", "COMI", "COPR", "CSAG", "CVLC", "DAPH", "DCRC", "DCTL", 
+    "DOMT", "EALR", "EATM", "EBSC", "ECAP", "ECHG", "ECOS", "EDAB", "EDIN", "EFID", "EGAS", 
+    "EGBE", "EGCH", "EGDC", "EGDH", "EGFI", "EGID", "EGLI", "EGSG", "EGTB", "EHDR", "EIMC", 
+    "EIPC", "EKHO", "ELKA", "ELSH", "EMFD", "ENGC", "EPCO", "ESIC", "ESRS", "ETEL", "EXPA", 
+    "FAHL", "FAIT", "FCIE", "FIIT", "FWRY", "GTHE", "GZCC", "HELI", "HERO", "HRHO", "IFAP", 
+    "IHCX", "INFI", "IRGC", "ISDI", "ISPH", "JUFO", "KABO", "KIMA", "LREI", "MACRO", "MASR", 
+    "MDWA", "MEPA", "MFPC", "MNHD", "MPCO", "MTIE", "OBET", "ODPD", "ODIN", "OIH", "OPAT", 
+    "ORAS", "ORHD", "ORWE", "PHDC", "PIOH", "PRDC", "PSDC", "QNBA", "RAFT", "RMDA", "RTVC", 
+    "SAEI", "SCFM", "SEMO", "SHAC", "SIAG", "SKPC", "SPHT", "SVCP", "SWDY", "SYVI", "TAQA", 
+    "TMGH", "TRGO", "UEGC", "UNTR", "UPLD", "UTOP", "VIRA", "ZEIRA"
 ]
+tickers_ca = [f"{t}.CA" for t in tickers]
 
-results = []
-
-st.info("نظام وهبة: تحميل مجمع وسريع (Batch Loading).")
-
-if st.button("بدء المسح الآن"):
-    with st.spinner('وهبة تقوم بتحميل بيانات السوق بالكامل...'):
-        # تحميل البيانات دفعة واحدة (أسرع بكتير)
-        data = yf.download(symbols, period="3mo", group_by='ticker', progress=False)
-        
-        for s in symbols:
+# 5. زر المسح
+if st.button("🚀 تصفية الفرص القوية (سويـنج)"):
+    opportunities = []
+    with st.spinner('جاري فحص إغلاقات السوق...'):
+        for ticker in tickers_ca:
             try:
-                # سحب بيانات السهم من المصفوفة الكبيرة
-                df = data[s]
-                if len(df) > 50:
-                    ma50 = df['Close'].rolling(50).mean().iloc[-1]
-                    today_close = df['Close'].iloc[-1]
+                # الاعتماد على إغلاق اليوم (Daily Close)
+                df = yf.download(ticker, period="6mo", interval="1d", progress=False)
+                if len(df) >= 50:
+                    df['MA20'] = df['Close'].rolling(window=20).mean()
+                    df['MA50'] = df['Close'].rolling(window=50).mean()
                     
-                    if today_close > ma50:
-                        results.append({
-                            "السهم": s,
-                            "السعر الحالي": round(float(today_close), 2),
-                            "المتوسط (MA50)": round(float(ma50), 2),
-                            "القرار": "صاعد 📈"
+                    # شرط السوينج: إغلاق فوق المتوسطات
+                    if df['Close'].iloc[-1] > df['MA50'].iloc[-1] and df['MA20'].iloc[-1] > df['MA50'].iloc[-1]:
+                        opportunities.append({
+                            "السهم": ticker.replace(".CA", ""),
+                            "الاتجاه": "صاعد",
+                            "الإشارة": "✅ شراء (قوية)"
                         })
-            except:
-                continue
-
-    if results:
-        st.table(pd.DataFrame(results))
+            except: continue
+    
+    # 6. عرض النتائج
+    if opportunities:
+        results_df = pd.DataFrame(opportunities)
+        st.table(results_df)
     else:
-        st.warning("لا توجد أسهم مطابقة اليوم.")
-
-st.markdown("""---
-**⚠️ إخلاء مسؤولية:** هذه الأداة للتحليل التعليمي فقط، والقرار النهائي مسؤوليتك.
-""")
+        st.warning("لا توجد فرص شراء قوية بناءً على إغلاق اليوم، السوق في مرحلة تجميع.")
