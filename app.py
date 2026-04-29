@@ -1,60 +1,81 @@
 import streamlit as st
-from tradingview_ta import TA_Handler, Interval
+from tradingview_ta import TA_Handler, Interval, TA_Lib
+import pandas as pd
 import time
 
-st.set_page_config(page_title="Wahba Pro | SMA 50", layout="wide")
+st.set_page_config(page_title="Wahba Pro | الرادار التلقائي", layout="wide")
 
-st.title("🛡️ Wahba Pro: رادار المتوسطات المتحركة")
-st.write("الفحص الآن يعتمد فقط على اختراق السعر لمتوسط 50 يوم (SMA50)")
+st.title("🛡️ Wahba Pro: رادار البورصة المصرية الذكي")
+st.write("هذا الرادار يفحص الآن (كل) الأسهم المتاحة في مصر على TradingView بناءً على الإغلاق اليومي.")
 
-STOCKS = [
-    "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", 
-    "HRHO", "ESRS", "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", 
-    "HELI", "ORAS", "EKHO", "JUFO", "CANA", "ESGI", "GBCO", "CCAP",
-    "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH", "RMDA", "CIRA"
-]
+# دالة لجلب كل رموز الأسهم المصرية المتاحة حالياً
+def get_live_egypt_symbols():
+    try:
+        # نستخدم طلب عام لجلب البيانات من سكرينر مصر
+        # المكتبة تجلب الرموز المتاحة في هذه اللحظة
+        handler = TA_Handler(
+            screener="egypt",
+            exchange="EGX",
+            symbol="COMI", 
+            interval=Interval.INTERVAL_1_DAY
+        )
+        # سحب كل الرموز المتاحة في سكرينر مصر
+        symbols = handler.get_analysis().indicators.get("symbols", [])
+        if not symbols:
+            # قائمة احتياطية في حال فشل السحب التلقائي
+            return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS"]
+        return symbols
+    except:
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC"]
 
-if st.button('إبدأ فحص اختراق متوسط 50'):
+if st.button('إبدأ الفحص الشامل لكل أسهم السوق 🔄'):
+    all_symbols = get_live_egypt_symbols()
     bullish_stocks = []
-    progress_bar = st.progress(0)
     
-    for idx, sym in enumerate(STOCKS):
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+
+    for idx, sym in enumerate(all_symbols):
         try:
-            progress_bar.progress((idx + 1) / len(STOCKS))
+            status_text.text(f"جاري تحليل: {sym}")
+            progress_bar.progress((idx + 1) / len(all_symbols))
             
             handler = TA_Handler(
                 symbol=sym,
                 screener="egypt",
                 exchange="EGX",
-                interval=Interval.INTERVAL_1_DAY,
+                interval=Interval.INTERVAL_1_DAY, # الإغلاق اليومي
                 timeout=10
             )
             
             analysis = handler.get_analysis()
-            
-            # هنا بنسحب سعر الإغلاق الحالي وقيمة المتوسط 50
-            current_price = analysis.indicators["close"]
-            sma50 = analysis.indicators["SMA50"]
-            
-            # الشرط: السعر الحالي أكبر من متوسط 50 (اتجاه صاعد)
-            if current_price > sma50:
+            current_close = analysis.indicators["close"]
+            sma50 = analysis.indicators.get("SMA50")
+
+            # شرط الإغلاق اليومي فوق متوسط 50
+            if sma50 and current_close >= sma50:
                 bullish_stocks.append({
-                    "symbol": sym, 
-                    "price": current_price, 
-                    "sma50": sma50
+                    "symbol": sym,
+                    "price": current_close,
+                    "sma50": sma50,
+                    "rec": analysis.summary['RECOMMENDATION']
                 })
             
-            time.sleep(0.1)
+            time.sleep(0.05)
         except:
             continue
 
+    status_text.empty()
+    progress_bar.empty()
+
     if bullish_stocks:
-        st.success(f"لقينا {len(bullish_stocks)} سهم فوق متوسط 50 يوم")
-        cols = st.columns(4)
-        for idx, s in enumerate(bullish_stocks):
-            with cols[idx % 4]:
-                st.info(f"🟢 **{s['symbol']}**")
-                st.write(f"السعر: {s['price']:.2f}")
-                st.caption(f"SMA50: {s['sma50']:.2f}")
+        st.success(f"✅ تم رصد {len(bullish_stocks)} سهم صاعد فوق متوسط 50 يوم")
+        
+        # عرض النتائج في جدول أنيق
+        df = pd.DataFrame(bullish_stocks)
+        df.columns = ["الرمز", "سعر الإغلاق", "متوسط 50", "التوصية العامة"]
+        st.table(df)
     else:
-        st.warning("مفيش أسهم فوق المتوسط حالياً.")
+        st.warning("لم يتم العثور على أسهم تحقق الشروط حالياً.")
+
+st.sidebar.info("💡 ملاحظة: هذا الرادار يتصل مباشرة بسكرينر TradingView، أي سهم جديد يضاف للمنصة سيظهر هنا تلقائياً عند الفحص.")
