@@ -5,7 +5,7 @@ from tradingview_ta import TA_Handler, Interval
 st.set_page_config(page_title="Wahba Pro", layout="wide")
 st.title("🚀 رادار البورصة المصرية - Wahba Pro")
 
-# قائمة الأسهم والرموز
+# قائمة الأسهم والرموز في تريدنج فيو
 assets = {
     "مؤشر EGX 30": "EGX30",
     "مؤشر EGX 70": "EGX70",
@@ -17,7 +17,7 @@ assets = {
 
 for name, sym in assets.items():
     try:
-        # الربط مع تريدنج فيو
+        # الربط مع تريدنج فيو (مصر)
         handler = TA_Handler(
             symbol=sym,
             screener="egypt",
@@ -27,7 +27,7 @@ for name, sym in assets.items():
         analysis = handler.get_analysis()
         status = analysis.summary['RECOMMENDATION']
 
-        # تحديد النتيجة
+        # الخلاصة: صاعد أو هابط
         if "BUY" in status:
             result = "صاعد 🟢"
             color = "#00c853"
@@ -35,7 +35,7 @@ for name, sym in assets.items():
             result = "هابط 🔴"
             color = "#ff1744"
         else:
-            result = "عرضي 🟡"
+            result = "عرضي / غير واضح 🟡"
             color = "#ffca28"
 
         st.subheader(f"{name}:")
@@ -45,4 +45,4 @@ for name, sym in assets.items():
     except Exception:
         st.error(f"عفواً.. تعذر جلب بيانات {name}")
 
-st.info("💡 هذا التوقع مبني على التحليل الفني لمنصة TradingView.")
+st.info("💡 هذا التوقع مبني على التحليل الفني لآخر إغلاق.")
