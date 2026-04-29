@@ -3,34 +3,32 @@ import yfinance as yf
 import pandas as pd
 
 # 1. إعدادات الصفحة
-st.set_page_config(page_title="Wahba Pro Fast", layout="wide")
+st.set_page_config(page_title="Wahba Pro Terminal", layout="wide")
 
-# 2. تصميم CSS
+# 2. تصميم CSS احترافي (السرعة في العرض)
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; color: #1a1a1a; font-family: 'Segoe UI', sans-serif; }
     .header { text-align: center; padding: 15px; border-bottom: 2px solid #333; }
-    div.stButton > button { background-color: #333; color: white; width: 100%; border-radius: 4px; padding: 10px; font-weight: bold; }
+    div.stButton > button { background-color: #333; color: white; width: 100%; padding: 10px; font-weight: bold; }
+    /* تسريع عرض الجدول */
+    .stDataFrame { animation: fadeIn 0.5s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("<div class='header'><h1>Wahba Pro Fast Terminal</h1></div>", unsafe_allow_html=True)
+st.markdown("<div class='header'><h1>Wahba Pro Market Terminal</h1></div>", unsafe_allow_html=True)
 
-tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA", "AMOC.CA", "ETEL.CA"]
-
-if 'data' not in st.session_state: st.session_state.data = None
-
-if st.button("تحديث فائق السرعة"):
-    # السر هنا: سحب البيانات دفعة واحدة (Bulk Download) بدل حلقة التكرار
-    # هذا يقلل وقت الانتظار بنسبة 80%
+# 3. محرك بيانات سريع جداً (Caching)
+@st.cache_data(ttl=600) # البيانات هتتحدث كل 10 دقائق أوتوماتيكياً
+def get_data(tickers):
+    # تحميل جماعي
     data = yf.download(tickers, period="6mo", interval="1d", group_by='ticker', progress=False)
-    
     results = []
     for ticker in tickers:
         try:
             df = data[ticker]
             if not df.empty:
-                # حساب سريع للمتوسط
                 ma50 = df['Close'].rolling(window=50).mean().iloc[-1]
                 results.append({
                     "Symbol": ticker.replace(".CA", ""),
@@ -38,11 +36,13 @@ if st.button("تحديث فائق السرعة"):
                     "MA50": round(float(ma50), 2)
                 })
         except: continue
-    
-    st.session_state.data = pd.DataFrame(results)
-    st.rerun()
+    return pd.DataFrame(results)
 
-if st.session_state.data is not None:
-    st.table(st.session_state.data)
+tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA", "AMOC.CA", "ETEL.CA"]
+
+# 4. التنفيذ
+if st.button("تحديث البيانات"):
+    df = get_data(tickers)
+    st.table(df)
 else:
-    st.info("اضغط على التحديث للبدء.")
+    st.info("اضغط على التحديث لعرض البيانات بسرعة فائقة.")
