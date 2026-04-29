@@ -1,38 +1,37 @@
 import streamlit as st
 import yfinance as yf
+import pandas as pd
 
 st.set_page_config(page_title="Wahba Pro", layout="wide")
 st.title("📊 لوحة مراقبة الأسهم اليومية")
 
-tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA"]
+# قائمة الأسهم (تأكد أن الرموز صحيحة في Yahoo Finance)
+tickers = ["EGX30.BO", "COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA"]
 
-# إضافة مؤشر تحميل ليعرف المستخدم أن البرنامج يعمل
-with st.spinner('جاري جلب بيانات السوق...'):
-    for ticker in tickers:
-        try:
-            df = yf.download(ticker, period="1d", interval="1d", progress=False)
+for ticker in tickers:
+    try:
+        # جلب بيانات آخر 5 أيام للتغلب على مشاكل بيانات اليوم الواحد
+        stock = yf.Ticker(ticker)
+        df = stock.history(period="5d")
+        
+        if not df.empty:
+            curr = float(df['Close'].iloc[-1])
+            high = float(df['High'].iloc[-1])
+            low = float(df['Low'].iloc[-1])
+            prev = float(df['Close'].iloc[-2]) # الإغلاق السابق
+            change = ((curr - prev) / prev) * 100
             
-            if not df.empty:
-                last = float(df['Close'].iloc[-1])
-                high = float(df['High'].iloc[-1])
-                low = float(df['Low'].iloc[-1])
-                open_p = float(df['Open'].iloc[0])
-                change = ((last - open_p) / open_p) * 100
-                
-                diff = high - low
-                progress = int(((last - low) / diff) * 100) if diff > 0 else 50
-                
-                c1, c2, c3 = st.columns([1, 1, 3])
-                with c1:
-                    st.write(f"**{ticker.replace('.CA', '')}**")
-                with c2:
-                    color = "🟢" if change >= 0 else "🔴"
-                    st.write(f"**{last:.2f}**")
-                    st.write(f"{color} {change:+.2f}%")
-                with c3:
-                    st.progress(min(max(progress, 0), 100))
-                st.divider()
-            else:
-                st.warning(f"لا توجد بيانات متاحة للسهم: {ticker}")
-        except Exception as e:
-            st.error(f"خطأ في تحميل {ticker}: {e}")
+            # حساب نسبة موقع السعر
+            diff = high - low
+            progress = ((curr - low) / diff) if diff > 0 else 0.5
+            
+            # التصميم
+            cols = st.columns([1, 1, 3])
+            cols[0].write(f"**{ticker.replace('.CA', '')}**")
+            cols[1].write(f"{curr:.2f} ({change:+.2f}%)")
+            cols[2].progress(min(max(progress, 0.0), 1.0))
+            st.divider()
+        else:
+            st.warning(f"البيانات غير متوفرة حالياً لـ {ticker}")
+    except Exception:
+        continue
