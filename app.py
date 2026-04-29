@@ -2,55 +2,62 @@ import streamlit as st
 import yfinance as yf
 
 # إعداد الصفحة
-st.set_page_config(page_title="Wahba Pro", layout="wide")
-st.title("📊 لوحة مراقبة الأسهم اليومية")
+st.set_page_config(page_title="Wahba Pro: Market Hub", layout="wide")
+st.title("📊 تحليل مؤشرات البورصة المصرية")
 
-# قائمة الأسهم
-tickers = ["COMI.CA", "SWDY.CA", "FWRY.CA", "TMGH.CA", "ORAS.CA", "ADIB.CA"]
+# رموز المؤشرات (الثلاثيني والسبعيني)
+indices = {
+    "EGX 30 (الثلاثيني)": "^CASE30",
+    "EGX 70 (السبعيني)": "EGX70.CA"
+}
 
-def get_market_data(ticker):
+def get_index_data(symbol):
     try:
-        # جلب البيانات
-        stock = yf.Ticker(ticker)
-        df = stock.history(period="1d")
+        # جلب بيانات آخر 5 أيام لضمان وجود بيانات حتى لو السوق قافل
+        idx = yf.Ticker(symbol)
+        df = idx.history(period="5d") 
         
         if df.empty:
             return None
         
-        last = float(df['Close'].iloc[-1])
-        high = float(df['High'].iloc[-1])
-        low = float(df['Low'].iloc[-1])
-        open_p = float(df['Open'].iloc[-1])
-        change = ((last - open_p) / open_p) * 100
+        # أخذ آخر سطر (أحدث بيانات)
+        last_row = df.iloc[-1]
+        last_price = float(last_row['Close'])
+        high = float(last_row['High'])
+        low = float(last_row['Low'])
+        open_p = float(last_row['Open'])
+        change = ((last_price - open_p) / open_p) * 100
         
-        return last, high, low, change
+        return last_price, high, low, change
     except:
         return None
 
-# عرض البيانات بتصميم مشابه للصورة
-for ticker in tickers:
-    data = get_market_data(ticker)
+# عرض المؤشرات
+for name, symbol in indices.items():
+    data = get_index_data(symbol)
     
-    # تصميم الصف
-    cols = st.columns([1, 1, 3])
+    col1, col2, col3 = st.columns([2, 2, 4])
     
-    with cols[0]:
-        st.write(f"**{ticker.replace('.CA', '')}**")
+    with col1:
+        st.subheader(name)
         
     if data:
         last, high, low, change = data
-        
-        with cols[1]:
-            color = "🟢" if change >= 0 else "🔴"
-            st.write(f"{last:.2f} ({change:+.2f}%)")
+        with col2:
+            color = "green" if change >= 0 else "red"
+            st.metric("المستوى", f"{last:,.2f}", f"{change:+.2f}%")
             
-        with cols[2]:
-            # شريط الأداء: يمثل مكان السعر بين الـ low والـ high
-            rng = high - low
-            progress = ((last - low) / rng) if rng > 0 else 0.5
+        with col3:
+            # شريط الأداء اليومي
+            diff = high - low
+            progress = ((last - low) / diff) if diff > 0 else 0.5
+            st.write(f"المدى اليومي: {low:,.0f} - {high:,.0f}")
             st.progress(min(max(progress, 0.0), 1.0))
     else:
-        with cols[1]:
-            st.caption("بيانات غير متاحة")
+        with col2:
+            st.error("فشل جلب البيانات")
+            st.caption("تأكد من اتصال الإنترنت أو رمز المؤشر")
             
     st.divider()
+
+st.info("ملاحظة: البيانات قد تتأخر حتى 15 دقيقة حسب مصدر Yahoo Finance.")
