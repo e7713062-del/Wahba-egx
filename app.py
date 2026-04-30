@@ -3,14 +3,14 @@ from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 
-# 1. إعدادات الصفحة
+# 1. إعدادات الصفحة الاحترافية
 st.set_page_config(
     page_title="Wahba EGX | Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 2. تصميم الهوية البصرية (SVG Logo + Typography) - نص أسود ولوجو هندسي
+# 2. تصميم الهوية البصرية (SVG Logo + Typography)
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
@@ -29,18 +29,19 @@ st.markdown("""
         margin-bottom: 15px;
     }
 
+    /* نص Wahba EGX باللون الأسود بالكامل */
     .main-title {
         font-family: 'Inter', sans-serif;
         font-size: 45px;
         font-weight: 900;
-        color: #000000; /* لون أسود تماماً */
+        color: #000000; 
         margin: 0;
         letter-spacing: -2px;
         text-transform: uppercase;
     }
 
     .sub-title {
-        color: #000000; /* لون أسود تماماً */
+        color: #000000;
         font-size: 11px;
         letter-spacing: 4px;
         margin-top: 5px;
@@ -80,7 +81,7 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# 3. قائمة الـ 220 سهم (تغطي كافة قطاعات البورصة المصرية)
+# 3. القائمة الموسعة للأسهم (تحديث تلقائي للمعلومات)
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -92,15 +93,13 @@ STOCKS = [
     "RAYA", "MCQE", "ORHD", "UNIT", "MBSC", "MPCI", "ZMID", "SPMD", "BINV", "MOIL",
     "AALR", "WKOL", "EALR", "CPME", "IFAP", "SMPP", "ELWA", "GPPL", "ALUM", "BIOC",
     "EDBM", "MICH", "DCRC", "ODIN", "ICMI", "RACC", "REAC", "EFTG", "ALRE", "ANBK",
-    "ARVA", "ASRE", "ATQA", "BINV", "BIOC", "CERA", "COPR", "DECO", "DGTW", "DOMT",
-    "EDBM", "EDFM", "EGAL", "EGAS", "EGBE", "EGLF", "EGNA", "EGRP", "EGTW", "EKHO",
-    "ELKA", "ELSA", "EMFD", "ENGC", "EPCO", "EPHL", "ESGI", "ETEL", "EXPA", "FAIT",
-    "FIRT", "GGCC", "GIZA", "GTHE", "GTWR", "HDBK", "ICID", "IDRE", "IFAP", "IRAX",
-    "ISMA", "KABO", "KTSP", "LCSW", "MAAL", "MCQE", "MENA", "MEPA", "MICH", "MIFT",
-    "MIPH", "MOIL", "MOSC", "MPCI", "MPRC", "MTIE", "NASR", "NBKE", "NCGC", "NDMC",
-    "ODIN", "ORAS", "ORHD", "ORWE", "PACH", "PHAR", "PICO", "PORT", "PRDC", "QNBA",
-    "RAYA", "REAC", "RREI", "SAUD", "SBIB", "SCEM", "SDTI", "SGGW", "SIPC", "SKPC",
-    "SPMD", "SPRE", "UEGC", "UNIP", "UNIT", "UPMS", "UTRE", "VERT", "WARY", "ZMID"
+    "ARVA", "ASRE", "ATQA", "CERA", "COPR", "DECO", "DGTW", "DOMT", "EDFM", "EGAS", 
+    "EGBE", "EGLF", "EGNA", "EGRP", "EGTW", "ELKA", "ELSA", "ENGC", "EPCO", "EPHL", 
+    "EXPA", "FAIT", "FIRT", "GGCC", "GIZA", "GTHE", "GTWR", "HDBK", "ICID", "IDRE", 
+    "IRAX", "ISMA", "KTSP", "LCSW", "MAAL", "MENA", "MEPA", "MIFT", "MIPH", "MOSC",
+    "NASR", "NBKE", "NCGC", "NDMC", "PACH", "PICO", "PRDC", "QNBA", "RREI", "SAUD", 
+    "SBIB", "SCEM", "SDTI", "SGGW", "SIPC", "SPRE", "UEGC", "UNIP", "UPMS", "UTRE", 
+    "VERT", "WARY"
 ]
 
 def analyze_security(symbol):
@@ -116,7 +115,7 @@ def analyze_security(symbol):
         ind = analysis.indicators
         rec = analysis.summary["RECOMMENDATION"]
         
-        # استراتيجية وهبة: سعر > SMA10 و RSI > 40 مع إشارة شراء
+        # استراتيجية الفحص الكمي
         if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in rec:
             return {
                 "Ticker": symbol,
