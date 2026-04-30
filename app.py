@@ -3,56 +3,46 @@ from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 import requests
+import time
 
-# 1. الإعدادات الأساسية
+# 1. الإعدادات
 st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
 
-# 2. تصميم الواجهة (نفس الشكل اللي بتحبه)
+# 2. الواجهة
 st.markdown("""
     <style>
     .main-header { text-align: center; padding: 20px; }
-    .brand-name {
-        font-family: 'Inter', sans-serif;
-        font-size: 50px;
-        font-weight: 900;
-        margin: 0;
-        letter-spacing: -2px;
-        text-transform: uppercase;
-        color: var(--text-color);
-    }
-    .brand-tagline { font-size: 14px; letter-spacing: 3px; opacity: 0.8; }
+    .brand-name { font-family: 'Inter', sans-serif; font-size: 50px; font-weight: 900; color: var(--text-color); text-transform: uppercase; }
     </style>
     <div class="main-header">
         <h1 class="brand-name">Wahba EGX</h1>
-        <p class="brand-tagline">OFFICIAL LIVE AUTO-SCANNER | EGYPT STOCK EXCHANGE</p>
+        <p>OFFICIAL LIVE AUTO-SCANNER | EGYPT STOCK EXCHANGE</p>
     </div>
 """, unsafe_allow_html=True)
 
-st.markdown("---")
-
-# 3. دالة جلب كل أسهم مصر أوتوماتيكياً (فك التعليقة)
-@st.cache_data(ttl=600) # تحديث كل 10 دقائق لضمان عدم التعليق
+# 3. دالة جلب الرموز مع معالجة الخطأ (عشان متوقفش)
 def get_live_symbols():
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
-        # طلب خفيف للسيرفر عشان ميحصلش بلوك
-        res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, timeout=10).json()
+        res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, timeout=15).json()
         return [item['s'].split(':')[1] for item in res['data']]
     except:
-        # قائمة إنقاذ لو السيرفر وقع
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "PHDC", "HRHO", "ESRS", "ORWE", "SKPC"]
+        # لو السيرفر معلق، بنرجع أهم أسهم البورصة عشان الأداة متوقفش خالص
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "PHDC", "HRHO", "ESRS", "BTEL", "ORWE", "AMOC"]
 
 def check_logic(symbol):
     try:
+        # ضفنا تأخير بسيط (0.1 ثانية) بين كل سهم والثاني عشان السيرفر ميعملش Block
+        time.sleep(0.1) 
         handler = TA_Handler(
             symbol=symbol, screener="egypt", exchange="EGX",
-            interval=Interval.INTERVAL_1_DAY, timeout=5 # تقليل التايم أوت للسرعة
+            interval=Interval.INTERVAL_1_DAY, timeout=10
         )
         analysis = handler.get_analysis()
         rec = analysis.summary["RECOMMENDATION"]
         ind = analysis.indicators
         
-        # شرط مرن عشان الأداة متوقفش: لو إشارة شراء والسعر مش منهار
+        # لو السهم واخد أي نوع من أنواع الشراء يظهر فوراً
         if "BUY" in rec:
             return {
                 "Ticker": symbol,
@@ -62,23 +52,34 @@ def check_logic(symbol):
             }
     except: return None
 
-# 4. الزر والنتائج
+# 4. زر التشغيل مع شريط تقدم (Progress Bar)
 if st.button('START FULL MARKET AUTO-SCAN'):
     all_stocks = get_live_symbols()
+    total = len(all_stocks)
     
-    with st.spinner(f'Checking {len(all_stocks)} Live Securities...'):
-        with ThreadPoolExecutor(max_workers=40) as executor: # زيادة السرعة
-            res = list(executor.map(check_logic, all_stocks))
-        
-        final = [item for item in res if item is not None]
-        
-        if final:
-            st.success(f"Identification Complete: {len(final)} Bullish Assets Found")
-            df = pd.DataFrame(final)
+    # هنا هتأكد إنها "بتحمل" قدام عينك
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    results = []
+    with st.spinner(f'Checking {total} Live Securities...'):
+        # قللنا الـ workers لـ 15 عشان نكون أهدى على السيرفر وميعلقش
+        with ThreadPoolExecutor(max_workers=15) as executor:
+            futures = [executor.submit(check_logic, s) for s in all_stocks]
+            for i, future in enumerate(futures):
+                res = future.result()
+                if res: results.append(res)
+                # تحديث شريط التحميل
+                progress_bar.progress((i + 1) / total)
+                status_text.text(f"Processing: {all_stocks[i]} ({i+1}/{total})")
+
+        if results:
+            st.success(f"Identification Complete: {len(results)} Bullish Assets Found")
+            df = pd.DataFrame(results)
             st.table(df.sort_values(by="Signal", ascending=False))
             
             # قسم الـ STRONG BUY
-            strong_buys = [item for item in final if "STRONG BUY" in item["Signal"]]
+            strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
             if strong_buys:
                 st.markdown("---")
                 st.markdown("### 🔥 Top Priority: STRONG BUY Opportunities")
