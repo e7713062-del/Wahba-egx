@@ -5,35 +5,72 @@ import pandas as pd
 import requests
 import time
 
-# 1. الإعدادات
-st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
+# 1. الإعدادات الأساسية
+st.set_page_config(page_title="Wahba EGX | Institutional Terminal", layout="wide")
 
-# 2. الواجهة
+# 2. الواجهة الاحترافية (بدون إيموجي، ألوان مؤسسية)
 st.markdown("""
     <style>
-    .main-header { text-align: center; padding: 20px; }
-    .brand-name { font-family: 'Inter', sans-serif; font-size: 50px; font-weight: 900; color: var(--text-color); text-transform: uppercase; }
+    /* تنسيق العنوان الرئيسي */
+    .main-header {
+        text-align: center;
+        padding: 30px 0;
+        border-bottom: 1px solid #333;
+        margin-bottom: 40px;
+    }
+    .brand-name {
+        font-family: 'Inter', sans-serif;
+        font-size: 45px;
+        font-weight: 800;
+        letter-spacing: -1px;
+        color: var(--text-color);
+        margin: 0;
+    }
+    .brand-tagline {
+        font-size: 12px;
+        letter-spacing: 5px;
+        text-transform: uppercase;
+        opacity: 0.6;
+        margin-top: 10px;
+    }
+    /* علامة الحالة الخضراء */
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #00ff00;
+        border-radius: 50%;
+        margin-right: 10px;
+        box-shadow: 0 0 8px #00ff00;
+    }
+    /* تنسيق الجداول */
+    .stTable {
+        border: 1px solid #222;
+        border-radius: 8px;
+    }
     </style>
+    
     <div class="main-header">
-        <h1 class="brand-name">Wahba EGX</h1>
-        <p>OFFICIAL LIVE AUTO-SCANNER | EGYPT STOCK EXCHANGE</p>
+        <h1 class="brand-name">WAHBA EGX</h1>
+        <div class="brand-tagline">Institutional Market Terminal • Live Data Stream</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. دالة جلب الرموز مع معالجة الخطأ (عشان متوقفش)
+# 3. دالة جلب الرموز أوتوماتيكياً (لضمان إضافة أي سهم جديد)
+@st.cache_data(ttl=3600)
 def get_live_symbols():
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, timeout=15).json()
         return [item['s'].split(':')[1] for item in res['data']]
     except:
-        # لو السيرفر معلق، بنرجع أهم أسهم البورصة عشان الأداة متوقفش خالص
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "PHDC", "HRHO", "ESRS", "BTEL", "ORWE", "AMOC"]
+        # قائمة للطوارئ
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "PHDC", "HRHO", "ESRS"]
 
 def check_logic(symbol):
     try:
-        # ضفنا تأخير بسيط (0.1 ثانية) بين كل سهم والثاني عشان السيرفر ميعملش Block
-        time.sleep(0.1) 
+        # تأخير بسيط لتجنب الحظر
+        time.sleep(0.05) 
         handler = TA_Handler(
             symbol=symbol, screener="egypt", exchange="EGX",
             interval=Interval.INTERVAL_1_DAY, timeout=10
@@ -42,7 +79,6 @@ def check_logic(symbol):
         rec = analysis.summary["RECOMMENDATION"]
         ind = analysis.indicators
         
-        # لو السهم واخد أي نوع من أنواع الشراء يظهر فوراً
         if "BUY" in rec:
             return {
                 "Ticker": symbol,
@@ -52,40 +88,43 @@ def check_logic(symbol):
             }
     except: return None
 
-# 4. زر التشغيل مع شريط تقدم (Progress Bar)
-if st.button('START FULL MARKET AUTO-SCAN'):
-    all_stocks = get_live_symbols()
-    total = len(all_stocks)
-    
-    # هنا هتأكد إنها "بتحمل" قدام عينك
-    progress_bar = st.progress(0)
-    status_text = st.empty()
-    
-    results = []
-    with st.spinner(f'Checking {total} Live Securities...'):
-        # قللنا الـ workers لـ 15 عشان نكون أهدى على السيرفر وميعلقش
-        with ThreadPoolExecutor(max_workers=15) as executor:
-            futures = [executor.submit(check_logic, s) for s in all_stocks]
-            for i, future in enumerate(futures):
-                res = future.result()
-                if res: results.append(res)
-                # تحديث شريط التحميل
-                progress_bar.progress((i + 1) / total)
-                status_text.text(f"Processing: {all_stocks[i]} ({i+1}/{total})")
+# 4. التحكم في التشغيل والنتائج
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
+    if st.button('INITIALIZE FULL MARKET SCAN', use_container_width=True):
+        all_stocks = get_live_symbols()
+        total = len(all_stocks)
+        
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
+        results = []
+        with st.spinner('Accessing Terminal Data...'):
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                futures = [executor.submit(check_logic, s) for s in all_stocks]
+                for i, future in enumerate(futures):
+                    res = future.result()
+                    if res: results.append(res)
+                    progress_bar.progress((i + 1) / total)
+                    status_text.markdown(f"**Scanning Asset:** `{all_stocks[i]}` ({i+1}/{total})")
 
-        if results:
-            st.success(f"Identification Complete: {len(results)} Bullish Assets Found")
-            df = pd.DataFrame(results)
-            st.table(df.sort_values(by="Signal", ascending=False))
-            
-            # قسم الـ STRONG BUY
-            strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
-            if strong_buys:
-                st.markdown("---")
-                st.markdown("### 🔥 Top Priority: STRONG BUY Opportunities")
-                st.table(pd.DataFrame(strong_buys))
-        else:
-            st.warning("No assets currently match. Market might be in a correction phase.")
+            status_text.empty()
+            progress_bar.empty()
 
+            if results:
+                st.markdown(f"### <div class='status-indicator'></div> Identified Opportunities", unsafe_allow_html=True)
+                df = pd.DataFrame(results)
+                st.table(df.sort_values(by="Signal", ascending=False))
+                
+                # قسم الـ STRONG BUY الاحترافي
+                strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
+                if strong_buys:
+                    st.divider()
+                    st.markdown("### <div class='status-indicator'></div> High-Priority Momentum (Strong Buy)", unsafe_allow_html=True)
+                    st.table(pd.DataFrame(strong_buys))
+            else:
+                st.warning("Analysis Complete: No assets currently meeting the criteria.")
+
+# تذييل الصفحة الرسمي
 st.divider()
-st.caption("WAHBA EGX | AUTO-SCANNER SYSTEM | © 2026")
+st.caption("WAHBA EGX | INSTITUTIONAL TERMINAL | DATA SOURCE: TRADINGVIEW | © 2026")
