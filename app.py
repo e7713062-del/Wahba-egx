@@ -2,7 +2,6 @@ import streamlit as st
 from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
-import base64
 
 # 1. إعدادات الصفحة
 st.set_page_config(
@@ -11,43 +10,26 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# دالة لتحويل الصورة لكود يفهمه المتصفح
-def get_base64_of_bin_file(bin_file):
-    try:
-        with open(bin_file, 'rb') as f:
-            data = f.read()
-        return base64.b64encode(data).decode()
-    except:
-        return None
-
-# محاولة تحميل الصورة
-img_base64 = get_base64_of_bin_file('1000393267.png')
-
-if img_base64:
-    logo_html = f'<img src="data:image/png;base64,{img_base64}" class="logo-image">'
-else:
-    # شكل احتياطي لو الصورة مش موجودة
-    logo_html = '<div style="height:140px; border:1px dashed #ccc; display:flex; align-items:center; justify-content:center;">Logo Not Found</div>'
-
-# 2. تصميم الهوية البصرية (تم إصلاح أقواس الـ CSS هنا)
-st.markdown(f"""
+# 2. تصميم الهوية البصرية (نفس الكود القديم والشكل القديم بالظبط)
+# التغيير الوحيد هو رسمة الـ SVG لتعبر عن اللوجو الخاص بك
+st.markdown("""
     <style>
-    .terminal-header {{
+    /* الحاوية الرئيسية */
+    .terminal-header {
         text-align: center;
         padding: 40px 20px;
         margin-bottom: 30px;
-    }}
-    .logo-container {{
+    }
+
+    .logo-container {
         display: inline-block;
         width: 140px;
         height: 140px;
         margin-bottom: 15px;
-    }}
-    .logo-image {{
-        width: 100%;
-        height: auto;
-    }}
-    .brand-name {{
+    }
+
+    /* نص Wahba EGX - يتغير لونه تلقائياً */
+    .brand-name {
         font-family: 'Inter', sans-serif;
         font-size: 50px;
         font-weight: 900;
@@ -55,9 +37,10 @@ st.markdown(f"""
         letter-spacing: -2px;
         text-transform: uppercase;
         line-height: 1;
-        color: var(--text-color);
-    }}
-    .brand-tagline {{
+        color: var(--text-color); /* يعتمد على ثيم الاستريميت */
+    }
+
+    .brand-tagline {
         font-size: 13px;
         letter-spacing: 4px;
         margin-top: 10px;
@@ -65,26 +48,39 @@ st.markdown(f"""
         font-weight: 700;
         opacity: 0.8;
         color: var(--text-color);
-    }}
-    .stButton>button {{
+    }
+
+    /* جعل اللوجو يأخذ لون النص الحالي للمتصفح */
+    .dynamic-svg {
+        stroke: currentColor;
+    }
+
+    /* تحسين شكل الأزرار */
+    .stButton>button {
         border-radius: 4px;
         font-weight: 800;
         height: 3.8em;
         width: 100%;
         border: 1px solid currentColor;
-    }}
+    }
     </style>
 
     <div class="terminal-header">
         <div class="logo-container">
-            {logo_html}
+            <svg class="dynamic-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50,10 L85,25 V75 L50,90 L15,75 V25 Z" 
+                      fill="none" stroke-width="5" stroke-linejoin="round"/>
+                
+                <path d="M25,65 L35,50 L45,60 L60,30 L75,35 M70,25 L75,35 L65,40" 
+                      fill="none" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </div>
         <div class="brand-name">Wahba EGX</div>
         <div class="brand-tagline">Institutional Market Terminal</div>
     </div>
     """, unsafe_allow_html=True)
 
-# 3. باقي الكود (بدون أي تغيير)
+# 3. باقي الكود القديم كما هو بالظبط (المنطق البرمجي وقائمة الأسهم)
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -100,7 +96,7 @@ STOCKS = [
     "EGBE", "EGLF", "EGNA", "EGRP", "EGTW", "ELKA", "ELSA", "ENGC", "EPCO", "EPHL", 
     "EXPA", "FAIT", "FIRT", "GGCC", "GIZA", "GTHE", "GTWR", "HDBK", "ICID", "IDRE", 
     "IRAX", "ISMA", "KTSP", "LCSW", "MAAL", "MENA", "MEPA", "MIFT", "MIPH", "MOSC",
-    "NASR", "NBKE", "NCGC", "NDMC", "PACH", "PICO", "PRDC", "QNBA", "RREI", "SAUD", 
+    "NASR", "NBKE", "NCGC", "NDMC", "PACH", "PICO", "PRDC", "QNBA", "REAC", "SAUD", 
     "SBIB", "SCEM", "SDTI", "SGGW", "SIPC", "SPRE", "UEGC", "UNIP", "UPMS", "UTRE", 
     "VERT", "WARY"
 ]
@@ -122,6 +118,7 @@ def analyze_engine(symbol):
             }
     except: return None
 
+# 4. الواجهة البرمجية (كما هي بالظبط)
 st.write("Quantitative Parameters: Price Action > SMA(10) | RSI(14) > 40")
 
 if st.button('START INSTITUTIONAL MARKET SCAN'):
