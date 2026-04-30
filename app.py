@@ -3,22 +3,23 @@ from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 
-# 1. إعدادات الصفحة الاحترافية
+# 1. Page Configuration
 st.set_page_config(
-    page_title="Wahba EGX | Terminal",
+    page_title="Wahba EGX Terminal",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 2. تصميم الواجهة واللوجو الهندسي (CSS + HTML) - مستوحى من صورة WAHBA PRO
+# 2. Institutional Branding: SVG Logo & Custom Typography
+# نص Wahba EGX بالأسود بالكامل، مع كود SVG للدرع الدقيق
 st.markdown("""
     <style>
-    /* تصميم الواجهة الجاد */
+    /* Main Layout */
     .stApp {
         background-color: #ffffff;
     }
     
-    /* تصميم اللوجو البرمجي الاحترافي */
+    /* Branded Header Container */
     .terminal-header {
         background-color: #fcfcfc;
         padding: 40px;
@@ -28,120 +29,79 @@ st.markdown("""
         border: 1px solid #eee;
     }
     
-    /* أيقونة اللوجو الهندسي (الدرع والسهم) */
-    .wahba-shield-icon {
+    /* Container for the Vector Logo */
+    .logo-container {
         display: inline-block;
         width: 100px;
         height: 100px;
-        position: relative;
-        margin-bottom: 15px;
+        margin-bottom: 20px;
     }
     
-    /* الدرع الهيكلي (استخدام CSS لرسم مضلع) */
-    .shield-body {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100px;
-        height: 100px;
-        background-color: transparent;
-        border: 5px solid #0052ff;
-        border-bottom-left-radius: 10px;
-        border-bottom-right-radius: 10px;
-        clip-path: polygon(50% 0%, 100% 15%, 90% 100%, 10% 100%, 0% 15%);
-        opacity: 0.2; /* خفيف ليعطي انطباع مائي */
-    }
-    
-    /* حرف W الهندسي الداخلي */
-    .internal-w {
-        position: absolute;
-        bottom: 25px;
-        left: 30px;
-        width: 40px;
-        height: 3px;
-        background-color: #0052ff;
-        transform: rotate(45deg);
-    }
-    .internal-w::after {
-        content: '';
-        position: absolute;
-        bottom: 0px;
-        left: 0px;
-        width: 40px;
-        height: 3px;
-        background-color: #0052ff;
-        transform: rotate(90deg);
-    }
-    
-    /* السهم الصاعد المدمج */
-    .up-arrow {
-        position: absolute;
-        top: 15px;
-        right: 15px;
-        width: 40px;
-        height: 4px;
-        background-color: #0052ff;
-        transform: rotate(-45deg);
-    }
-    .up-arrow::after {
-        content: '';
-        position: absolute;
-        top: -8px;
-        right: -8px;
-        border-left: 10px solid transparent;
-        border-right: 10px solid transparent;
-        border-bottom: 20px solid #0052ff;
+    /* Vector Logo (SVG) - Precise recreation of the shield and arrow from the image */
+    .wahba-vector {
+        width: 100%;
+        height: 100%;
     }
 
-    /* نص الشعار (Wahba EGX) - أسود بالكامل */
+    /* Main Title Text (Wahba EGX) - Absolute Black */
     .main-title {
         font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-        font-size: 50px;
+        font-size: 52px;
         font-weight: 800;
-        color: #1a1a1a; /* أسود تماماً */
+        color: #1a1a1a; /* Black */
         margin: 0;
-        letter-spacing: -2px;
+        letter-spacing: -2.5px;
         text-transform: uppercase;
+        line-height: 1;
     }
     
-    /* الشعار الفرعي الاحترافي (بدون "Pro") */
+    /* Sub-title Typography */
     .sub-title {
         color: #888888;
         font-size: 14px;
         letter-spacing: 5px;
-        margin-top: 10px;
+        margin-top: 12px;
         text-transform: uppercase;
         font-weight: 500;
+        line-height: 1.2;
     }
     
-    /* تعديل شكل الأزرار */
+    /* Formal Button Styling */
     .stButton>button {
         background-color: #1a1a1a;
         color: white;
         border-radius: 4px;
-        font-weight: bold;
+        font-weight: 600;
         height: 3.8em;
         border: none;
         width: 100%;
-        transition: background 0.2s;
+        font-size: 15px;
+        transition: all 0.2s ease;
     }
     .stButton>button:hover {
         background-color: #0052ff;
         color: white;
+        box-shadow: 0 4px 12px rgba(0,82,255,0.3);
     }
     </style>
     
     <div class="terminal-header">
-        <div class="wahba-shield-icon">
-            <div class="shield-body"></div>
-            <div class="internal-w"></div>
-            <div class="up-arrow"></div>
+        <div class="logo-container">
+            <svg class="wahba-vector" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <path d="M50,2.5 L97,16.5 L88,90 Q80,97.5 50,97.5 Q20,97.5 12,90 L3,16.5 Z" 
+                      fill="none" stroke="#0052ff" stroke-width="5"/>
+                <path d="M28,68 L36,45 L50,55 L64,45 L72,68" 
+                      fill="none" stroke="#0052ff" stroke-width="5" stroke-linecap="round"/>
+                <path d="M60,35 Q65,28 75,28 M75,28 L68,22 M75,28 L78,35 L68,22" 
+                      fill="none" stroke="#0052ff" stroke-width="5" stroke-linecap="round"/>
+            </svg>
         </div>
         <div class="main-title">Wahba EGX</div>
         <div class="sub-title">Algorithmic Market Terminal</div>
     </div>
     """, unsafe_allow_html=True)
 
-# 3. قائمة الأسهم الكاملة والمحدثة للبورصة المصرية
+# 3. Comprehensive EGX Asset List
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -157,7 +117,6 @@ STOCKS = [
 
 def analyze_security(symbol):
     try:
-        # إعداد الاتصال بالبيانات
         handler = TA_Handler(
             symbol=symbol,
             screener="egypt",
@@ -169,35 +128,31 @@ def analyze_security(symbol):
         ind = data.indicators
         signal = data.summary["RECOMMENDATION"]
         
-        # استراتيجية الفحص (منطق "Wahba EGX")
+        # Fundamental Wahba EGX Logic
         if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in signal:
             return {
                 "Ticker": symbol,
-                "Last Price": round(ind["close"], 2),
+                "Price": round(ind["close"], 2),
                 "RSI (14)": round(ind["RSI"], 2),
                 "SMA (10)": round(ind["SMA10"], 2),
                 "Signal Strength": signal.replace("_", " ")
             }
-    except:
+    except Exception:
         return None
 
-# 4. واجهة التشغيل والنتائج
+# 4. Main Interface
 st.divider()
 st.write("Quantitative Parameters: Close > SMA(10) | RSI(14) > 40")
 
-# زر البدء الاحترافي
-if st.button('INITIATE COMPREHENSIVE MARKET SCAN'):
-    with st.spinner('Accessing EGX Market Feed...'):
+if st.button('INITIATE EGX MARKET SCAN'):
+    with st.spinner('Synchronizing with Real-time EGX Feed...'):
         with ThreadPoolExecutor(max_workers=30) as executor:
             raw_res = list(executor.map(analyze_security, STOCKS))
         
-        # تصفية النتائج
         filtered_results = [r for r in raw_res if r is not None]
         
         if filtered_results:
-            st.success(f"Scanning Protocol Complete: {len(filtered_results)} bullish assets identified.")
-            
-            # عرض البيانات في جدول احترافي
+            st.success(f"Scanning Complete: {len(filtered_results)} Opportunities Identified.")
             df = pd.DataFrame(filtered_results)
             st.dataframe(
                 df.sort_values(by="RSI (14)", ascending=False),
@@ -205,21 +160,21 @@ if st.button('INITIATE COMPREHENSIVE MARKET SCAN'):
                 hide_index=True
             )
             
-            # ملخص سريع تفاعلي
+            # Metric Summary Grid
             st.markdown("---")
-            st.subheader("Performance Summary Matrix")
-            metrics_cols = st.columns(5)
+            st.subheader("Asset Metric Grid")
+            metric_cols = st.columns(5)
             for idx, item in enumerate(filtered_results):
-                with metrics_cols[idx % 5]:
+                with metric_cols[idx % 5]:
                     st.metric(
                         label=item["Ticker"],
-                        value=f"{item['Last Price']} EGP",
+                        value=f"{item['Price']} EGP",
                         delta=f"RSI {item['RSI (14)']}",
                         delta_color="normal"
                     )
         else:
-            st.warning("Analysis finished. No securities currently meet the quantitative protocol.")
+            st.warning("No securities currently meet the quantitative bullish protocol.")
 
-# 5. تذييل الصفحة الرسمي
+# 5. Formal Footer
 st.divider()
 st.caption("WAHBA EGX TERMINAL | INSTUTIONAL-GRADE ANALYSIS | © 2026 GLOBAL MARKETS")
