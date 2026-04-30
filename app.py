@@ -6,9 +6,9 @@ import time
 import random
 
 # 1. إعدادات المنصة الرسمية
-st.set_page_config(page_title="Wahba EGX | Secure Terminal", layout="wide")
+st.set_page_config(page_title="Wahba EGX | Professional Terminal", layout="wide")
 
-# 2. تصميم الواجهة (مظهر مؤسسي هادئ)
+# 2. تصميم الواجهة المؤسسي
 st.markdown("""
     <style>
     .main-header { text-align: center; padding: 30px 0; border-bottom: 1px solid #333; margin-bottom: 40px; }
@@ -19,11 +19,11 @@ st.markdown("""
     </style>
     <div class="main-header">
         <h1 class="brand-name">WAHBA EGX</h1>
-        <div class="brand-tagline">Institutional Market Terminal • Stable Scanning Mode</div>
+        <div class="brand-tagline">Institutional Market Terminal • Stealth Batch Mode</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. سحب الأسهم أوتوماتيكياً (لضمان شمولية الـ 283 سهم والجديد)
+# 3. سحب الأسهم (283 سهم حالياً وأي جديد مستقبلاً)
 @st.cache_data(ttl=1800)
 def get_live_symbols():
     try:
@@ -32,12 +32,12 @@ def get_live_symbols():
         res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, headers=headers, timeout=15).json()
         return [item['s'].split(':')[1] for item in res['data']]
     except:
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH"]
+        return ["COMI", "FWRY", "TMGH", "SWDY"]
 
-# 4. زر التشغيل بنمط "المسح الهادئ" (Slow & Steady)
+# 4. زر التشغيل بنظام "5-5"
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    if st.button('START SECURE 2-MINUTE SCAN', use_container_width=True):
+    if st.button('START SECURE BATCH SCAN (5 per step)', use_container_width=True):
         stocks = get_live_symbols()
         total = len(stocks)
         
@@ -45,11 +45,12 @@ with col2:
         progress_bar = st.progress(0)
         status_placeholder = st.empty()
         
-        with st.spinner('Initializing Secure Connection to EGX Data...'):
-            for i, symbol in enumerate(stocks):
+        with st.spinner('Accessing Market Data in Stealth Mode...'):
+            for i in range(0, total):
+                symbol = stocks[i]
                 try:
-                    # تحديث الحالة فوراً
-                    status_placeholder.markdown(f"🐢 **Stable Mode Processing:** `{symbol}` ({i+1}/{total})")
+                    # تحديث الحالة لكل سهم
+                    status_placeholder.markdown(f"📡 **Batch Syncing:** `{symbol}` ({i+1}/{total})")
                     progress_bar.progress((i + 1) / total)
                     
                     handler = TA_Handler(
@@ -67,10 +68,14 @@ with col2:
                             "Signal": rec.replace("_", " ")
                         })
                     
-                    # الفاصل الزمني السحري: انتظار ربع ثانية ثابت + ربع ثانية عشوائي
-                    # ده بيخلي الـ 283 سهم ياخدوا حوالي 120 لـ 150 ثانية (دقيقتين وشوية)
-                    time.sleep(0.4 + random.uniform(0.1, 0.3))
-                    
+                    # نظام الـ "خمسة خمسة"
+                    # بعد كل 5 أسهم، نصبر ثانية كاملة لراحة السيرفر
+                    if (i + 1) % 5 == 0:
+                        time.sleep(1.0 + random.uniform(0.1, 0.5))
+                    else:
+                        # بين كل سهم وسهم في نفس المجموعة، انتظار بسيط جداً
+                        time.sleep(0.2)
+                        
                 except:
                     continue
 
@@ -78,24 +83,24 @@ with col2:
             progress_bar.empty()
 
             if results:
-                st.markdown(f"### <div class='status-indicator'></div> Market Opportunities Identified", unsafe_allow_html=True)
+                st.markdown(f"### <div class='status-indicator'></div> Identified Opportunities", unsafe_allow_html=True)
                 st.table(pd.DataFrame(results).sort_values(by="Signal", ascending=False))
                 
                 strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
                 if strong_buys:
                     st.divider()
-                    st.markdown("### <div class='status-indicator'></div> Institutional Priority (Strong Buy)", unsafe_allow_html=True)
+                    st.markdown("### <div class='status-indicator'></div> High-Priority Momentum", unsafe_allow_html=True)
                     st.table(pd.DataFrame(strong_buys))
             else:
-                st.info("Analysis Complete: No assets currently match the defined protocol.")
+                st.info("Scan Complete: No assets currently match the defined protocol.")
 
 # 5. القسم القانوني
 st.markdown("""
     <div class="disclaimer-box">
         <strong>إخلاء مسؤولية قانوني:</strong><br>
-        هذه الأداة مخصصة للأغراض التعليمية فقط ولا تعتبر نصيحة مالية. القرارات الاستثمارية مسؤولية المستخدم بالكامل.
+        هذه الأداة معلوماتية فقط. سوق المال متقلب والقرارات الاستثمارية مسؤولية المستخدم.
     </div>
 """, unsafe_allow_html=True)
 
 st.divider()
-st.caption("WAHBA EGX | STABLE INSTITUTIONAL VERSION | © 2026")
+st.caption("WAHBA EGX | BATCH VERSION | © 2026")
