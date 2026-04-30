@@ -1,138 +1,129 @@
 import streamlit as st
-from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
+import base64
+import re
 
-# 1. إعدادات الصفحة
-st.set_page_config(
-    page_title="Wahba EGX | Terminal",
-    layout="wide",
-    initial_sidebar_state="collapsed"
-)
+def main():
+    # Page configuration for a clean, full-width look
+    st.set_page_config(
+        page_title="Wahba EGX Trading Terminal",
+        layout="wide",
+        initial_sidebar_state="collapsed"
+    )
 
-# 2. تصميم الهوية البصرية الديناميكية (تتغير مع وضع الشاشة)
-st.markdown("""
-    <style>
-    /* الحاوية الرئيسية */
-    .terminal-header {
-        text-align: center;
-        padding: 40px 20px;
-        margin-bottom: 30px;
-    }
+    # 1. Branding and Full Logo Section with SVG
+    # We combine the graphics (shield) and text into a single SVG unit for iOS/Android rendering
+    logo_svg = """
+    <svg width="400" height="300" viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg">
+      <g id="WahbaShield" transform="translate(130, 20) scale(0.6)">
+        <path d="M50 0 L100 20 L95 85 Q90 95 50 95 Q10 95 5 85 L0 20 Z" fill="#007bff" />
+        <path d="M5 21 L95 21 M5 21 L5 22 M95 21 L95 22 M40 90 L60 90 Q65 90 65 85" stroke="white" stroke-width="1.5" fill="none"/>
+        <g id="candles" transform="translate(15, 30)">
+          <rect x="0" y="25" width="5" height="15" fill="white" />
+          <rect x="10" y="20" width="5" height="20" fill="white" />
+          <rect x="20" y="15" width="5" height="25" fill="white" />
+          <rect x="30" y="10" width="5" height="30" fill="white" />
+          <rect x="40" y="5" width="5" height="35" fill="white" />
+          <rect x="50" y="0" width="5" height="40" fill="white" />
+        </g>
+        <path id="arrow" d="M15 70 Q35 60 45 40 Q55 20 65 10 L70 15 L65 5 L55 10 L60 15 Q50 25 40 45 Q30 65 15 70 Z" fill="white" />
+      </g>
+      
+      <text x="50%" y="230" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="900" font-size="48" fill="black">WAHBA EGX</text>
+      
+      <text x="50%" y="270" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="16" fill="black">INSTITUTIONAL MARKET TERMINAL</text>
+    </svg>
+    """
+    
+    # Render the combined logo unit at the top of the page
+    st.markdown(
+        f'<div style="text-align: center; width: 100%; display: flex; justify-content: center; margin-bottom: 20px;">{logo_svg}</div>',
+        unsafe_allow_html=True
+    )
 
-    .logo-container {
-        display: inline-block;
-        width: 140px;
-        height: 140px;
-        margin-bottom: 15px;
-    }
+    st.markdown("---")
 
-    /* نص Wahba EGX - يتغير لونه تلقائياً */
-    .brand-name {
-        font-family: 'Inter', sans-serif;
-        font-size: 50px;
-        font-weight: 900;
-        margin: 0;
-        letter-spacing: -2px;
-        text-transform: uppercase;
-        line-height: 1;
-        color: var(--text-color); /* يعتمد على ثيم الاستريميت */
-    }
+    # 2. Information and Quantitative Parameters
+    # As requested, text from image_0.png
+    st.markdown(
+        '<div style="color: black; font-size: 18px; margin-bottom: 30px;">'
+        'Quantitative Parameters: Price Action > SMA(10) | RSI(14) > 40'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-    .brand-tagline {
-        font-size: 13px;
-        letter-spacing: 4px;
-        margin-top: 10px;
-        text-transform: uppercase;
-        font-weight: 700;
-        opacity: 0.8;
-        color: var(--text-color);
-    }
+    # 3. Main Scanner Interface
+    st.header("Egyptian Market Scanner")
+    st.write("Scan the Egyptian Exchange (EGX) for institutional-grade opportunities.")
 
-    /* جعل اللوجو SVG يأخذ لون النص الحالي للمتصفح */
-    .dynamic-svg {
-        stroke: currentColor;
-    }
+    # Target indices/stocks for the EGX
+    target_stocks = ["COMI", "FWRY", "TMGH", "ABUK", "SWDY"] # Example stocks
 
-    /* تحسين شكل الأزرار */
-    .stButton>button {
-        border-radius: 4px;
-        font-weight: 800;
-        height: 3.8em;
-        width: 100%;
-        border: 1px solid currentColor;
-    }
-    </style>
+    # Create the full screener symbol list
+    symbols = [f"EGYPT:{stock}" for stock in target_stocks]
 
-    <div class="terminal-header">
-        <div class="logo-container">
-            <svg class="dynamic-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50,8 L88,22 L81,82 Q80,92 50,92 Q20,92 19,82 L12,22 Z" 
-                      fill="none" stroke-width="6" stroke-linejoin="round"/>
-                
-                <path d="M30,62 L40,40 L50,55 L65,25 L80,18" 
-                      fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-                
-                <path d="M72,18 L82,16 L80,26" 
-                      fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-        </div>
-        <div class="brand-name">Wahba EGX</div>
-        <div class="brand-tagline">Institutional Market Terminal</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # SCAN BUTTON - The focus from image_0.png and image_9.png
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        start_scan = st.button("START INSTITUTIONAL MARKET SCAN")
 
-# 3. قائمة الأسهم الكاملة (220 سهم)
-STOCKS = [
-    "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
-    "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
-    "CANA", "ESGI", "GBCO", "CCAP", "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH",
-    "RMDA", "CIRA", "ELSH", "OIH", "EMFD", "MTIE", "DSCW", "EHDR", "ASPI", "ADIB",
-    "ACTF", "KRDI", "ATLC", "ALCN", "AFMC", "AMER", "ARAB", "AMIA", "AIDC", "AIHC",
-    "ARCC", "ASCM", "BTFH", "COSG", "POUL", "CSAG", "PRCL", "CNFN", "CIEB", "DAPH",
-    "EAST", "EFID", "EGTS", "PHAR", "MPRC", "ETRS", "AFDI", "ECAP", "KABO", "OBRI",
-    "RAYA", "MCQE", "ORHD", "UNIT", "MBSC", "MPCI", "ZMID", "SPMD", "BINV", "MOIL",
-    "AALR", "WKOL", "EALR", "CPME", "IFAP", "SMPP", "ELWA", "GPPL", "ALUM", "BIOC",
-    "EDBM", "MICH", "DCRC", "ODIN", "ICMI", "RACC", "REAC", "EFTG", "ALRE", "ANBK",
-    "ARVA", "ASRE", "ATQA", "CERA", "COPR", "DECO", "DGTW", "DOMT", "EDFM", "EGAS", 
-    "EGBE", "EGLF", "EGNA", "EGRP", "EGTW", "ELKA", "ELSA", "ENGC", "EPCO", "EPHL", 
-    "EXPA", "FAIT", "FIRT", "GGCC", "GIZA", "GTHE", "GTWR", "HDBK", "ICID", "IDRE", 
-    "IRAX", "ISMA", "KTSP", "LCSW", "MAAL", "MENA", "MEPA", "MIFT", "MIPH", "MOSC",
-    "NASR", "NBKE", "NCGC", "NDMC", "PACH", "PICO", "PRDC", "QNBA", "RREI", "SAUD", 
-    "SBIB", "SCEM", "SDTI", "SGGW", "SIPC", "SPRE", "UEGC", "UNIP", "UPMS", "UTRE", 
-    "VERT", "WARY"
-]
+    # Scan logic (if button is pressed)
+    if start_scan:
+        st.write("Fetching technical data...")
+        results_data = []
 
-def analyze_engine(symbol):
-    try:
-        handler = TA_Handler(
-            symbol=symbol, screener="egypt", exchange="EGX",
-            interval=Interval.INTERVAL_1_DAY, timeout=15
-        )
-        data = handler.get_analysis()
-        ind = data.indicators
-        signal = data.summary["RECOMMENDATION"]
-        
-        if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in signal:
-            return {
-                "Ticker": symbol, "Price": round(ind["close"], 2),
-                "RSI": round(ind["RSI"], 2), "Signal": signal.replace("_", " ")
-            }
-    except: return None
+        with st.spinner("Analyzing market structure..."):
+            for symbol in symbols:
+                try:
+                    # Parse symbol to get only the stock name
+                    stock_name = symbol.split(":")[1]
+                    
+                    handler = TA_Handler(
+                        symbol=stock_name,
+                        screener="egypt",
+                        exchange="EGYPT",
+                        interval=Interval.INTERVAL_1_DAY
+                    )
+                    analysis = handler.get_analysis()
+                    
+                    if analysis:
+                        indicators = analysis.indicators
+                        sma10 = indicators["SMA10"]
+                        rsi14 = indicators["RSI"]
+                        close = indicators["close"]
+                        
+                        # Calculate criteria
+                        is_close_above_sma = close > sma10
+                        is_rsi_gt_40 = rsi14 > 40
+                        
+                        # Institutional Criteria match
+                        criteria_met = is_close_above_sma and is_rsi_gt_40
+                        
+                        results_data.append({
+                            "Stock": stock_name,
+                            "Close Price": f"{close:.2f}",
+                            "RSI(14)": f"{rsi14:.2f}",
+                            "SMA(10)": f"{sma10:.2f}",
+                            "Close > SMA(10)": "✅" if is_close_above_sma else "❌",
+                            "RSI(14) > 40": "✅" if is_rsi_gt_40 else "❌",
+                            "Scan Result": "Met 🚀" if criteria_met else "Not Met"
+                        })
+                except Exception as e:
+                    st.error(f"Error analyzing {symbol}: {e}")
 
-# 4. الواجهة البرمجية
-st.write("Quantitative Parameters: Price Action > SMA(10) | RSI(14) > 40")
-
-if st.button('START INSTITUTIONAL MARKET SCAN'):
-    with st.spinner('Scanning Market Feed...'):
-        with ThreadPoolExecutor(max_workers=35) as executor:
-            raw_res = list(executor.map(analyze_engine, STOCKS))
-        results = [r for r in raw_res if r is not None]
-        if results:
-            st.success(f"Protocol Complete: {len(results)} Bullish Opportunities Found")
-            st.table(pd.DataFrame(results))
+        # Display results in a clean table
+        if results_data:
+            df = pd.DataFrame(results_data)
+            st.success("Market analysis complete.")
+            
+            # Format the table display
+            st.table(df)
+            
+            # Highlight met criteria in data
+            st.info("Results highlighted in green indicate stocks that meet the parameters.")
         else:
-            st.warning("No securities currently match the criteria.")
+            st.warning("No data retrieved.")
 
-st.divider()
-st.caption("WAHBA EGX | QUANTITATIVE TERMINAL | © 2026")
+if __name__ == "__main__":
+    main()
