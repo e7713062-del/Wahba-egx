@@ -1,13 +1,12 @@
 import streamlit as st
-from tradingview_ta import TA_Handler, Interval
-import pandas as pd
 import requests
+import pandas as pd
 import time
 
-# 1. إعدادات المنصة
-st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
+# 1. إعدادات المنصة الرسمية
+st.set_page_config(page_title="Wahba EGX | Universal Terminal", layout="wide")
 
-# 2. تصميم الواجهة الرسمي
+# 2. تصميم الواجهة المؤسسي
 st.markdown("""
     <style>
     .main-header { text-align: center; padding: 30px 0; border-bottom: 1px solid #333; margin-bottom: 40px; }
@@ -18,81 +17,76 @@ st.markdown("""
     </style>
     <div class="main-header">
         <h1 class="brand-name">WAHBA EGX</h1>
-        <div class="brand-tagline">Institutional Terminal • Optimized Scan Engine</div>
+        <div class="brand-tagline">Universal Market Terminal • Infinite Range Mode</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. سحب كل الأسهم (الـ 283 وأي سهم جديد)
-@st.cache_data(ttl=1800)
-def get_live_symbols():
+# 3. محرك الفحص المجمع بمدى مفتوح (Unlimited Discovery)
+def execute_universal_scan():
+    url = "https://scanner.tradingview.com/egypt/scan"
+    # هنا بنبعت طلب للسيرفر يرجعلنا "كل" الأسهم اللي فيها إشارة شراء
+    payload = {
+        "filter": [
+            {"left": "recommendation_all", "operation": "in_range", "right": [0.1, 5]} # فلتر الشراء المفتوح
+        ],
+        "options": {"lang": "en"},
+        "markets": ["egypt"],
+        "symbols": {"query": {"types": []}, "tickers": []},
+        "columns": ["logoid", "name", "close", "change", "RSI", "recommendation_all"],
+        "sort": {"sortBy": "recommendation_all", "sortOrder": "desc"},
+        "range": [0, 10000] # مدى ضخم جداً يعمل كأنه Infinity ليغطي أي عدد أسهم مستقبلي
+    }
+    
     try:
-        url = "https://scanner.tradingview.com/egypt/scan"
-        res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, timeout=15).json()
-        return [item['s'].split(':')[1] for item in res['data']]
-    except:
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK"]
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.post(url, json=payload, headers=headers, timeout=20).json()
+        data = res.get('data', [])
+        
+        final_list = []
+        for item in data:
+            rec_val = item['d'][5]
+            # تحديد قوة الإشارة بناءً على القيمة الفنية للمؤشرات
+            if rec_val > 0.5:
+                signal = "STRONG BUY"
+            elif rec_val > 0.1:
+                signal = "BUY"
+            else:
+                continue # تجاهل أي إشارات بيع أو تعادل
+                
+            final_list.append({
+                "Ticker": item['d'][1],
+                "Price": round(item['d'][2], 2),
+                "RSI": round(item['d'][4], 2) if item['d'][4] else "N/A",
+                "Signal": signal
+            })
+        return final_list
+    except Exception as e:
+        return []
 
-# 4. زر التشغيل والتحميل المباشر
+# 4. واجهة التشغيل
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    if st.button('EXECUTE REAL-TIME SCAN', use_container_width=True):
-        stocks = get_live_symbols()
-        total = len(stocks)
-        
-        results = []
-        progress_bar = st.progress(0)
-        status_placeholder = st.empty()
-        
-        with st.spinner('Accessing Live Market Stream...'):
-            for i, symbol in enumerate(stocks):
-                try:
-                    # تحديث الحالة فوراً عشان تحس بالتحميل
-                    status_placeholder.markdown(f"📡 **Active Scan:** `{symbol}` ({i+1}/{total})")
-                    progress_bar.progress((i + 1) / total)
-                    
-                    handler = TA_Handler(
-                        symbol=symbol, screener="egypt", exchange="EGX",
-                        interval=Interval.INTERVAL_1_DAY, timeout=5
-                    )
-                    analysis = handler.get_analysis()
-                    rec = analysis.summary["RECOMMENDATION"]
-                    
-                    if "BUY" in rec:
-                        results.append({
-                            "Ticker": symbol,
-                            "Price": round(analysis.indicators["close"], 2),
-                            "RSI": round(analysis.indicators["RSI"], 2),
-                            "Signal": rec.replace("_", " ")
-                        })
-                    
-                    # سرعة متوازنة: انتظار بسيط جداً لا يلاحظه المستخدم بس يحمي من البلوك
-                    time.sleep(0.05) 
-                    
-                except:
-                    continue
-
-            status_placeholder.empty()
-            progress_bar.empty()
-
+    if st.button('START UNIVERSAL MARKET SCAN', use_container_width=True):
+        with st.spinner('Scanning all listed assets in EGX...'):
+            results = execute_universal_scan()
+            
             if results:
-                st.markdown(f"### <div class='status-indicator'></div> Identified Opportunities", unsafe_allow_html=True)
-                st.table(pd.DataFrame(results).sort_values(by="Signal", ascending=False))
+                st.markdown(f"### <div class='status-indicator'></div> Identified Opportunities ({len(results)} Assets Found)", unsafe_allow_html=True)
+                df = pd.DataFrame(results)
+                st.table(df)
                 
-                strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
-                if strong_buys:
-                    st.divider()
-                    st.markdown("### <div class='status-indicator'></div> Institutional Priority (Strong Buy)", unsafe_allow_html=True)
-                    st.table(pd.DataFrame(strong_buys))
+                # إحصائية بسيطة لتعزيز الشكل المؤسسي
+                st.caption(f"Total Market Coverage: Inclusive of all detected listings.")
             else:
-                st.info("Analysis Complete: No assets currently match the defined growth protocol.")
+                st.info("Scan Complete: No securities currently meet the institutional growth criteria.")
 
 # 5. القسم القانوني
 st.markdown("""
     <div class="disclaimer-box">
         <strong>إخلاء مسؤولية قانوني:</strong><br>
-        هذه الأداة للمساعدة المعلوماتية فقط. تداول الأوراق المالية ينطوي على مخاطر، والقرار النهائي مسؤوليتك.
+        هذه الأداة للمساعدة المعلوماتية والتحليل الفني فقط. سوق المال ينطوي على مخاطر، والقرار النهائي مسؤوليتك الشخصية.
     </div>
 """, unsafe_allow_html=True)
 
 st.divider()
-st.caption("WAHBA EGX | PROFESSIONAL VERSION | © 2026")
+st.caption(f"WAHBA EGX | INFINITE ENGINE | © 2026")
