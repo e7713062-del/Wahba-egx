@@ -3,25 +3,28 @@ from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 
-# إعدادات الصفحة لظهورها بشكل احترافي
-st.set_page_config(page_title="Wahba Pro | Sensitive", layout="wide", initial_sidebar_state="collapsed")
+# إعدادات الصفحة
+st.set_page_config(page_title="Wahba Pro | Full Market", layout="wide")
 
-# تصميم الواجهة
-st.title("🛡️ رادار Wahba Pro - اصطياد الفرص")
-st.write("فحص لحظي للبورصة المصرية بناءً على إغلاق الشموع اليومية.")
+st.title("🛡️ رادار Wahba Pro - المسح الشامل للبورصة المصرية")
+st.write("يتم الآن فحص أكثر من 100 سهم من السوق المصري بناءً على التحليل الفني اللحظي.")
 
-# قائمة الأسهم (رموز البورصة المصرية على TradingView)
+# القائمة الموسعة للأسهم (EGX 100 + الأكثر نشاطاً)
 STOCKS = [
-    "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", 
-    "HRHO", "ESRS", "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", 
-    "HELI", "ORAS", "EKHO", "JUFO", "CANA", "ESGI", "GBCO", "CCAP",
-    "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH", "RMDA", "CIRA",
-    "ELSH", "OIH", "EMFD", "MTIE", "DSCW", "EHDR", "ASPI"
+    "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
+    "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
+    "CANA", "ESGI", "GBCO", "CCAP", "AUTO", "MNHD", "PORT", "TALA", "ETEL", "ISPH",
+    "RMDA", "CIRA", "ELSH", "OIH", "EMFD", "MTIE", "DSCW", "EHDR", "ASPI", "ADIB",
+    "ACTF", "KRDI", "ATLC", "ALCN", "AFMC", "AMER", "ARAB", "AMIA", "AIDC", "AIHC",
+    "ARCC", "ASCM", "BTFH", "COSG", "POUL", "CSAG", "PRCL", "CNFN", "CIEB", "DAPH",
+    "EAST", "EFID", "EGTS", "PHAR", "MPRC", "ETRS", "AFDI", "ECAP", "KABO", "OBRI",
+    "RAYA", "MCQE", "ORHD", "EGTS", "UNIT", "MBSC", "MPCI", "ZMID", "SPMD", "BINV",
+    "MOIL", "AALR", "WKOL", "EALR", "CPME", "IFAP", "SMPP", "AMIA", "ELWA", "GPPL",
+    "ALUM", "BIOC", "EDBM", "MICH", "DCRC", "ODIN", "ICMI", "RACC", "BINV", "REAC"
 ]
 
 def check_stock(symbol):
     try:
-        # جلب البيانات من TradingView
         handler = TA_Handler(
             symbol=symbol,
             screener="egypt",
@@ -29,46 +32,42 @@ def check_stock(symbol):
             interval=Interval.INTERVAL_1_DAY,
             timeout=10
         )
-        
         analysis = handler.get_analysis()
         d = analysis.indicators
         rec = analysis.summary["RECOMMENDATION"]
         
-        # الشروط: السعر فوق متوسط 10، RSI فوق 40، وتوصية شراء
+        # الفلتر الحساس الخاص بك
         if d["close"] > d["SMA10"] and d["RSI"] > 40 and "BUY" in rec:
             return {
                 "السهم": symbol,
                 "السعر": round(d["close"], 2),
                 "RSI": round(d["RSI"], 2),
-                "الحالة": rec.replace("_", " ")
+                "قوة الإشارة": rec.replace("_", " ")
             }
     except:
         return None
 
-# زر بدء التشغيل
-if st.button('🚀 إبدأ الفحص الشامل للأسهم'):
-    with st.spinner('جاري فحص السوق المصري...'):
-        with ThreadPoolExecutor(max_workers=25) as executor:
+if st.button('🚀 إبدأ الفحص الشامل (100+ سهم)'):
+    with st.spinner('جاري تحليل كافة أسهم السوق المصري...'):
+        # رفعنا max_workers لسرعة الفحص
+        with ThreadPoolExecutor(max_workers=30) as executor:
             results = list(executor.map(check_stock, STOCKS))
         
-        # تصفية النتائج
         final_list = [res for res in results if res is not None]
         
         if final_list:
-            st.success(f"✅ تم العثور على {len(final_list)} فرصة صاعدة")
-            
-            # عرض البيانات في جدول
+            st.success(f"✅ تم رصد {len(final_list)} سهم في منطقة شراء")
             df = pd.DataFrame(final_list)
             st.dataframe(df, use_container_width=True)
             
-            # عرض بطاقات سريعة
             st.divider()
-            cols = st.columns(4)
+            st.subheader("💡 ملخص الفرص المتاحة:")
+            cols = st.columns(5)
             for i, item in enumerate(final_list):
-                with cols[i % 4]:
-                    st.metric(label=item["السهم"], value=item["السعر"], delta=f"RSI: {item['RSI']}")
+                with cols[i % 5]:
+                    st.metric(label=item["السهم"], value=item["السعر"], delta=item["RSI"])
         else:
-            st.warning("لا توجد أسهم تحقق الشروط حالياً.")
+            st.warning("لا توجد فرص مطابقة للشروط حالياً في السوق بالكامل.")
 
 st.divider()
-st.caption("تم البرمجة بواسطة Wahba Pro - البيانات تتحدث تلقائياً")
+st.caption("Wahba Pro Terminal © 2026 - البيانات مستمدة من TradingView")
