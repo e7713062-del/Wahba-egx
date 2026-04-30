@@ -6,7 +6,7 @@ import pandas as pd
 # 1. الاعدادات الاساسية
 st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
 
-# 2. تصميم الواجهة (الاسم في المنتصف وتعديل المسمى لـ Wahba EGX)
+# 2. تصميم الواجهة (العنوان في المنتصف)
 st.markdown("""
     <style>
     .main-header {
@@ -28,16 +28,23 @@ st.markdown("""
         opacity: 0.8;
         text-transform: uppercase;
     }
+    .strong-buy-box {
+        padding: 20px;
+        border-radius: 10px;
+        border: 2px solid #00ff00;
+        background-color: rgba(0, 255, 0, 0.05);
+        margin-top: 20px;
+    }
     </style>
     <div class="main-header">
         <h1 class="brand-name">Wahba EGX</h1>
-        <p class="brand-tagline">OFFICIAL MARKET TERMINAL | EGYPT STOCK EXCHANGE</p>
+        <p class="brand-tagline">OFFICIAL LIVE MARKET TERMINAL | EGYPT STOCK EXCHANGE</p>
     </div>
 """, unsafe_allow_html=True)
 
 st.markdown("---")
 
-# 3. قائمة الأسهم الكاملة (220 سهم)
+# 3. قائمة الأسهم الشاملة
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -61,17 +68,14 @@ STOCKS = [
 def check_logic(symbol):
     try:
         handler = TA_Handler(
-            symbol=symbol,
-            screener="egypt",
-            exchange="EGX",
-            interval=Interval.INTERVAL_1_DAY,
-            timeout=10
+            symbol=symbol, screener="egypt", exchange="EGX",
+            interval=Interval.INTERVAL_1_DAY, timeout=10
         )
         analysis = handler.get_analysis()
         d = analysis.indicators
         rec = analysis.summary["RECOMMENDATION"]
         
-        # الشرط: السعر فوق متوسط 10 و RSI فوق 40 وتوصية شراء
+        # فلترة الأسهم الصاعدة بشكل عام
         if d["close"] > d["SMA10"] and d["RSI"] > 40 and "BUY" in rec:
             return {
                 "Ticker": symbol,
@@ -79,10 +83,11 @@ def check_logic(symbol):
                 "RSI": round(d["RSI"], 2),
                 "Signal": rec.replace("_", " ")
             }
-    except:
-        return None
+    except: return None
 
-# 4. زر التشغيل والنتائج
+# 4. التنفيذ والنتائج
+st.write("Quantitative Parameters: Price Action > SMA(10) | RSI(14) > 40")
+
 if st.button('RUN SYSTEM SCAN'):
     with st.spinner('Accessing Real-time Market Data...'):
         with ThreadPoolExecutor(max_workers=35) as executor:
@@ -94,8 +99,20 @@ if st.button('RUN SYSTEM SCAN'):
             st.success(f"Identification Complete: {len(final)} Bullish Assets Found")
             df = pd.DataFrame(final)
             st.table(df)
+            
+            # --- القسم الجديد للأسهم Strong Buy ---
+            strong_buys = [item for item in final if "STRONG BUY" in item["Signal"]]
+            
+            if strong_buys:
+                st.markdown("---")
+                st.markdown("### 🔥 Top Priority: STRONG BUY Opportunities")
+                st.info("The following assets show maximum bullish momentum:")
+                st.table(pd.DataFrame(strong_buys))
+            else:
+                st.markdown("---")
+                st.write("No 'Strong Buy' signals detected at this moment.")
         else:
             st.warning("No assets currently match the defined growth protocol.")
 
-st.markdown("---")
+st.divider()
 st.caption("WAHBA EGX | DATA PROVIDED BY TRADINGVIEW | © 2026")
