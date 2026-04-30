@@ -3,15 +3,61 @@ from concurrent.futures import ThreadPoolExecutor
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 
-# 1. الاعدادات الاساسية
-st.set_page_config(page_title="Wahba Pro Terminal", layout="wide")
+# 1. Page Configuration
+st.set_page_config(
+    page_title="Wahba EGX | Terminal",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-# 2. تصميم الواجهة (لوجو وهيبة برو)
-st.markdown("<h1 style='text-align: left; color: #1a1a1a;'>WAHBA<span style='color: #0066ff;'>PRO</span></h1>", unsafe_allow_html=True)
-st.write("OFFICIAL MARKET TERMINAL | EGYPT STOCK EXCHANGE")
-st.markdown("---")
+# 2. Advanced Styling (CSS)
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #ffffff;
+    }
+    .main-header {
+        text-align: center;
+        padding: 20px;
+    }
+    .logo-img {
+        width: 100%;
+        max-width: 800px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        margin-bottom: 20px;
+    }
+    .stButton>button {
+        background-color: #1a1a1a;
+        color: white;
+        border-radius: 4px;
+        font-weight: 600;
+        border: none;
+        width: 100%;
+        height: 3.5em;
+        font-size: 18px;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #0052ff;
+        box-shadow: 0 4px 12px rgba(0,82,255,0.3);
+    }
+    .metric-container {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 10px;
+        border-left: 5px solid #0052ff;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# 3. قائمة الاسهم
+# 3. Logo and Branding Section
+st.markdown('<div class="main-header">', unsafe_allow_html=True)
+# عرض اللوجو الذي يحتوي على الشموع والعملات
+st.image("https://r.jina.ai/i/6688d08595884964893796ec1c70e703", use_container_width=True)
+st.markdown('</div>', unsafe_allow_html=True)
+
+# 4. Assets List
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -25,44 +71,59 @@ STOCKS = [
     "ALUM", "BIOC", "EDBM", "MICH", "DCRC", "ODIN", "ICMI", "RACC", "REAC"
 ]
 
-def check_logic(symbol):
+def analyze_security(ticker):
     try:
         handler = TA_Handler(
-            symbol=symbol,
+            symbol=ticker,
             screener="egypt",
             exchange="EGX",
             interval=Interval.INTERVAL_1_DAY,
             timeout=10
         )
         analysis = handler.get_analysis()
-        d = analysis.indicators
-        rec = analysis.summary["RECOMMENDATION"]
+        ind = analysis.indicators
+        signal = analysis.summary["RECOMMENDATION"]
         
-        # الشرط: السعر فوق متوسط 10 و RSI فوق 40 وتوصية شراء
-        if d["close"] > d["SMA10"] and d["RSI"] > 40 and "BUY" in rec:
+        # التقاطع الإيجابي: السعر فوق متوسط 10 و RSI فوق 40
+        if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in signal:
             return {
-                "Ticker": symbol,
-                "Price": round(d["close"], 2),
-                "RSI": round(d["RSI"], 2),
-                "Signal": rec.replace("_", " ")
+                "Ticker": ticker,
+                "Price": round(ind["close"], 2),
+                "RSI": round(ind["RSI"], 2),
+                "Signal": signal.replace("_", " "),
+                "Trend": "Bullish Momentum"
             }
     except:
         return None
 
-# 4. زر التشغيل والنتائج
-if st.button('RUN SYSTEM SCAN'):
-    with st.spinner('Accessing Real-time Market Data...'):
-        with ThreadPoolExecutor(max_workers=30) as executor:
-            res = list(executor.map(check_logic, STOCKS))
-        
-        final = [item for item in res if item is not None]
-        
-        if final:
-            st.success(f"Identification Complete: {len(final)} Bullish Assets Found")
-            df = pd.DataFrame(final)
-            st.table(df) # استخدام table بدلاً من dataframe لضمان استقرار العرض
-        else:
-            st.warning("No assets currently match the defined growth protocol.")
+# 5. Execution UI
+st.markdown("### Market Intelligence Terminal")
+st.info("System Protocol: Institutional Technical Scan | Timeframe: Daily | Market: Egypt")
 
-st.markdown("---")
-st.caption("WAHBA PRO | DATA PROVIDED BY TRADINGVIEW | © 2026")
+if st.button('Execute Comprehensive Market Scan'):
+    with st.spinner('Accessing Global Data Servers...'):
+        with ThreadPoolExecutor(max_workers=30) as executor:
+            raw_results = list(executor.map(analyze_security, STOCKS))
+        
+        results = [r for r in raw_results if r is not None]
+        
+        if results:
+            st.success(f"Analysis Complete: {len(results)} Opportunities Identified")
+            df = pd.DataFrame(results)
+            st.table(df)
+            
+            st.divider()
+            st.subheader("Asset Performance Matrix")
+            cols = st.columns(5)
+            for i, item in enumerate(results):
+                with cols[i % 5]:
+                    st.metric(
+                        label=item["Ticker"], 
+                        value=f"{item['Price']} EGP", 
+                        delta=f"RSI: {item['RSI']}"
+                    )
+        else:
+            st.warning("Scan finished. No bullish patterns detected under current criteria.")
+
+st.divider()
+st.caption("WAHBA EGX TERMINAL | PROPRIETARY QUANTITATIVE SYSTEM | © 2026")
