@@ -10,78 +10,87 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 2. تصميم الهوية البصرية (SVG Logo + Typography)
+# 2. تصميم الهوية البصرية (SVG Brand Identity)
+# تم بناء الشعار برمجياً ليتطابق مع "براند وهبة" (الدرع والسهم وحرف W الهندسي)
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
     
     .terminal-header {
         text-align: center;
-        padding: 30px;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #eee;
+        padding: 40px 20px;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #f0f0f0;
     }
 
     .logo-container {
         display: inline-block;
-        width: 100px;
-        height: 100px;
-        margin-bottom: 15px;
+        width: 120px;
+        height: 120px;
+        margin-bottom: 20px;
     }
 
-    /* نص Wahba EGX باللون الأسود بالكامل */
-    .main-title {
-        font-family: 'Inter', sans-serif;
-        font-size: 45px;
+    /* نص الهوية باللون الأسود بالكامل */
+    .brand-name {
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: 52px;
         font-weight: 900;
-        color: #000000; 
+        color: #000000;
         margin: 0;
-        letter-spacing: -2px;
+        letter-spacing: -3px;
         text-transform: uppercase;
+        line-height: 1;
     }
 
-    .sub-title {
+    .brand-tagline {
         color: #000000;
-        font-size: 11px;
-        letter-spacing: 4px;
-        margin-top: 5px;
+        font-size: 13px;
+        letter-spacing: 5px;
+        margin-top: 10px;
         text-transform: uppercase;
         font-weight: 700;
-        opacity: 0.8;
+        opacity: 0.7;
     }
 
+    /* تصميم زر المسح السوقي */
     .stButton>button {
         background-color: #000000;
         color: white;
         border-radius: 4px;
-        font-weight: 700;
-        height: 3.5em;
+        font-weight: 800;
+        height: 4em;
         width: 100%;
         border: none;
-        transition: 0.3s;
+        font-size: 16px;
+        transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
     .stButton>button:hover {
         background-color: #0052ff;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(0,82,255,0.2);
     }
     </style>
 
     <div class="terminal-header">
         <div class="logo-container">
             <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                <path d="M50,5 L92,22 L84,85 Q82,95 50,95 Q18,95 16,85 L8,22 Z" 
-                      fill="none" stroke="#0052ff" stroke-width="6"/>
-                <path d="M30,65 L38,42 L50,55 L62,42 L75,18" 
-                      fill="none" stroke="#0052ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M65,18 L75,18 L75,28" 
-                      fill="none" stroke="#0052ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M50,5 L95,22 L85,88 Q82,97 50,97 Q18,97 15,88 L5,22 Z" 
+                      fill="none" stroke="#0052ff" stroke-width="7" stroke-linejoin="round"/>
+                <rect x="35" y="45" width="4" height="15" fill="#0052ff" opacity="0.3"/>
+                <rect x="45" y="35" width="4" height="25" fill="#0052ff" opacity="0.3"/>
+                <rect x="55" y="40" width="4" height="20" fill="#0052ff" opacity="0.3"/>
+                <path d="M25,70 L35,45 L50,60 L65,45 L80,15" 
+                      fill="none" stroke="#0052ff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M68,15 L80,15 L80,27" 
+                      fill="none" stroke="#0052ff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
         </div>
-        <div class="main-title">Wahba EGX</div>
-        <div class="sub-title">Institutional Market Terminal</div>
+        <div class="brand-name">Wahba EGX</div>
+        <div class="brand-tagline">Institutional Market Terminal</div>
     </div>
     """, unsafe_allow_html=True)
 
-# 3. القائمة الموسعة للأسهم (تحديث تلقائي للمعلومات)
+# 3. القائمة الكاملة (220 سهم)
 STOCKS = [
     "COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK", "EGAL", "PHDC", "HRHO", "ESRS",
     "ORWE", "SKPC", "BTEL", "EGCH", "AMOC", "MFOT", "HELI", "ORAS", "EKHO", "JUFO",
@@ -102,7 +111,7 @@ STOCKS = [
     "VERT", "WARY"
 ]
 
-def analyze_security(symbol):
+def analyze_engine(symbol):
     try:
         handler = TA_Handler(
             symbol=symbol,
@@ -111,36 +120,35 @@ def analyze_security(symbol):
             interval=Interval.INTERVAL_1_DAY,
             timeout=15
         )
-        analysis = handler.get_analysis()
-        ind = analysis.indicators
-        rec = analysis.summary["RECOMMENDATION"]
+        data = handler.get_analysis()
+        ind = data.indicators
+        signal = data.summary["RECOMMENDATION"]
         
-        # استراتيجية الفحص الكمي
-        if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in rec:
+        # استراتيجية وهبة الذكية
+        if ind["close"] > ind["SMA10"] and ind["RSI"] > 40 and "BUY" in signal:
             return {
                 "Ticker": symbol,
                 "Price": round(ind["close"], 2),
                 "RSI": round(ind["RSI"], 2),
-                "Signal": rec.replace("_", " "),
-                "Trend": "Bullish"
+                "Signal": signal.replace("_", " "),
+                "Status": "Bullish"
             }
     except:
         return None
 
-# 4. واجهة التشغيل والنتائج
-st.info("System Protocol: Institutional Technical Scan | Assets: 200+ | Market: Egypt")
+# 4. واجهة المستخدم
+st.write("Quantitative Parameters: Price Action > SMA(10) | RSI(14) > 40")
 
-if st.button('EXECUTE FULL MARKET SCAN'):
-    with st.spinner('Accessing Real-time EGX Data...'):
-        with ThreadPoolExecutor(max_workers=30) as executor:
-            raw_res = list(executor.map(analyze_security, STOCKS))
+if st.button('START INSTITUTIONAL MARKET SCAN'):
+    with st.spinner('Scanning 200+ Assets in Real-Time...'):
+        with ThreadPoolExecutor(max_workers=35) as executor:
+            raw_res = list(executor.map(analyze_engine, STOCKS))
         
         results = [r for r in raw_res if r is not None]
         
         if results:
-            st.success(f"Analysis Complete: {len(results)} Bullish Opportunities Found.")
-            df = pd.DataFrame(results)
-            st.table(df)
+            st.success(f"Protocol Complete: {len(results)} Bullish Opportunities Identified")
+            st.table(pd.DataFrame(results))
             
             st.divider()
             cols = st.columns(5)
@@ -148,7 +156,7 @@ if st.button('EXECUTE FULL MARKET SCAN'):
                 with cols[idx % 5]:
                     st.metric(label=item["Ticker"], value=f"{item['Price']} EGP", delta=f"RSI: {item['RSI']}")
         else:
-            st.warning("No securities currently meet the quantitative growth criteria.")
+            st.warning("No securities currently match the institutional bullish criteria.")
 
 st.divider()
-st.caption("WAHBA EGX TERMINAL | PROPRIETARY ALGORITHM | © 2026 GLOBAL MARKETS")
+st.caption("WAHBA EGX | QUANTITATIVE TERMINAL | © 2026")
