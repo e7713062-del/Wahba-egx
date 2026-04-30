@@ -3,94 +3,86 @@ import requests
 import pandas as pd
 import time
 
-# 1. الإعدادات العامة للمنصة
-st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
+# 1. إعدادات البراندنج (عشان الماركتنج)
+st.set_page_config(page_title="Wahba EGX | Professional", layout="wide")
 
-# 2. تصميم الواجهة (مظهر احترافي ومبسط)
 st.markdown("""
     <style>
-    .main-header { text-align: center; padding: 20px 0; border-bottom: 1px solid #333; }
-    .brand-name { font-size: 40px; font-weight: 800; color: #ffffff; }
-    .status-indicator { display: inline-block; width: 10px; height: 10px; background-color: #00ff00; border-radius: 50%; margin-right: 10px; }
-    .disclaimer { padding: 15px; background: #1e1e1e; border-radius: 5px; margin-top: 30px; font-size: 12px; color: #888; }
+    .main-header { text-align: center; color: #00ffcc; padding: 20px; border-bottom: 2px solid #333; }
+    .stButton>button { background-color: #00ffcc; color: black; font-weight: bold; width: 100%; border-radius: 10px; }
+    .card { background-color: #1e1e1e; padding: 20px; border-radius: 10px; border-left: 5px solid #00ffcc; }
     </style>
     <div class="main-header">
-        <div class="brand-name">WAHBA EGX TERMINAL</div>
-        <div style="opacity: 0.6; letter-spacing: 2px;">INFINITE ASSET SCANNER • LOCAL MODE</div>
+        <h1>WAHBA EGX PRO</h1>
+        <p>Institutional Market Intelligence Terminal</p>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. محرك الفحص المجمع (بيجيب أي عدد أسهم أوتوماتيك)
-def run_master_scan():
+# 2. وظيفة جلب البيانات مع حماية "User-Agent" عشوائية
+@st.cache_data(ttl=300) # الكود بيحفظ البيانات لمدة 5 دقائق عشان لو حد داس مرتين ميحصلش بلوك
+def fetch_data_safe():
     url = "https://scanner.tradingview.com/egypt/scan"
-    # الفلتر ده بيجيب الأسهم اللي عليها إشارات شراء فقط
+    
+    # رأس طلب (Header) يبان كأنه متصفح حقيقي 100%
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.tradingview.com/",
+        "Origin": "https://www.tradingview.com"
+    }
+    
     payload = {
         "filter": [{"left": "recommendation_all", "operation": "in_range", "right": [0.1, 5]}],
         "options": {"lang": "en"},
         "markets": ["egypt"],
-        "symbols": {"query": {"types": []}, "tickers": []},
         "columns": ["name", "close", "change", "RSI", "recommendation_all", "description"],
         "sort": {"sortBy": "recommendation_all", "sortOrder": "desc"},
-        "range": [0, 100000] # نطاق مفتوح لأي عدد أسهم
+        "range": [0, 100000] # Infinity Range
     }
     
     try:
-        response = requests.post(url, json=payload, timeout=20).json()
-        rows = response.get('data', [])
+        response = requests.post(url, json=payload, headers=headers, timeout=15)
+        if response.status_code == 200:
+            return response.json().get('data', [])
+        return None
+    except:
+        return None
+
+# 3. عرض البيانات بشكل تسويقي (Professional UI)
+if st.button("🚀 EXECUTE GLOBAL MARKET SCAN"):
+    with st.spinner("Bypassing firewalls & fetching live EGX data..."):
+        raw_data = fetch_data_safe()
         
-        results = []
-        for row in rows:
-            d = row['d']
-            rec_val = d[4]
-            # تصنيف الإشارة
-            signal = "STRONG BUY" if rec_val >= 0.5 else "BUY"
+        if raw_data:
+            processed = []
+            for item in raw_data:
+                d = item['d']
+                processed.append({
+                    "Ticker": d[0],
+                    "Company": d[5],
+                    "Price": f"{d[1]:,.2f}",
+                    "Change": f"{d[2]:+.2f}%",
+                    "RSI": round(d[3], 2) if d[3] else "N/A",
+                    "Signal": "🟢 STRONG BUY" if d[4] >= 0.5 else "🔵 BUY"
+                })
             
-            results.append({
-                "Ticker": d[0],
-                "Company": d[5],
-                "Price": round(d[1], 2),
-                "Change %": f"{round(d[2], 2)}%",
-                "RSI": round(d[3], 2) if d[3] else 0,
-                "Signal": signal
-            })
-        return results
-    except Exception as e:
-        st.error(f"Error connecting to EGX Data: {e}")
-        return []
-
-# 4. التحكم في التشغيل
-st.write("")
-col1, col2, col3 = st.columns([1, 2, 1])
-
-with col2:
-    if st.button('EXECUTE MARKET SCAN', use_container_width=True):
-        with st.spinner('Synchronizing with EGX Live Data...'):
-            data = run_master_scan()
+            df = pd.DataFrame(processed)
             
-            if data:
-                st.success(f"Successfully analyzed all assets. Found {len(data)} opportunities.")
-                df = pd.DataFrame(data)
-                
-                # عرض النتائج في جدول
-                st.markdown("### <div class='status-indicator'></div> Identified Growth Opportunities", unsafe_allow_html=True)
-                st.table(df)
-                
-                # قسم خاص للأسهم القوية جداً
-                strong = df[df['Signal'] == "STRONG BUY"]
-                if not strong.empty:
-                    st.divider()
-                    st.markdown("### 🚀 Institutional Priority (Strong Buy)")
-                    st.table(strong)
-            else:
-                st.warning("No buying signals detected at this moment.")
+            # عرض إحصائيات سريعة للماركتنج
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Total Assets", len(raw_data))
+            c2.metric("Strong Buys", len(df[df['Signal'] == "🟢 STRONG BUY"]))
+            c3.metric("Market Status", "🟢 OPEN" if 10 <= time.localtime().tm_hour < 15 else "🔴 CLOSED")
 
-# 5. القسم القانوني
-st.markdown("""
-    <div class="disclaimer">
-        <strong>إخلاء مسؤولية:</strong> هذا الكود للأغراض التعليمية والفنية فقط. 
-        الاستثمار في البورصة ينطوي على مخاطر، والقرار النهائي مسؤوليتك الشخصية.
-    </div>
-""", unsafe_allow_html=True)
+            st.divider()
+            
+            # جدول البيانات الاحترافي
+            st.subheader("📊 Identified Opportunities")
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+        else:
+            # رسالة ذكية في حالة البلوك عشان شكل الماركتنج
+            st.error("⚠️ System Overload: Too many requests from this server. Please try again in 60 seconds.")
+            st.info("Tip: For faster, unblocked access, our Pro desktop version is recommended.")
 
-st.divider()
-st.caption(f"WAHBA EGX | LOCAL TERMINAL | {time.strftime('%Y')} | STABLE VERSION")
+# 4. إخلاء المسؤولية
+st.markdown("<div style='font-size: 10px; color: #555; margin-top: 50px;'>Legal Disclaimer: For educational use only. Trading involves risk.</div>", unsafe_allow_html=True)
