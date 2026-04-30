@@ -3,12 +3,11 @@ from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 import requests
 import time
-import random
 
-# 1. إعدادات المنصة الرسمية
-st.set_page_config(page_title="Wahba EGX | Professional Terminal", layout="wide")
+# 1. إعدادات المنصة
+st.set_page_config(page_title="Wahba EGX | Terminal", layout="wide")
 
-# 2. تصميم الواجهة المؤسسي
+# 2. تصميم الواجهة الرسمي
 st.markdown("""
     <style>
     .main-header { text-align: center; padding: 30px 0; border-bottom: 1px solid #333; margin-bottom: 40px; }
@@ -19,25 +18,24 @@ st.markdown("""
     </style>
     <div class="main-header">
         <h1 class="brand-name">WAHBA EGX</h1>
-        <div class="brand-tagline">Institutional Market Terminal • Stealth Batch Mode</div>
+        <div class="brand-tagline">Institutional Terminal • Optimized Scan Engine</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. سحب الأسهم (283 سهم حالياً وأي جديد مستقبلاً)
+# 3. سحب كل الأسهم (الـ 283 وأي سهم جديد)
 @st.cache_data(ttl=1800)
 def get_live_symbols():
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, headers=headers, timeout=15).json()
+        res = requests.post(url, json={"filter":[],"options":{"lang":"en"},"markets":["egypt"]}, timeout=15).json()
         return [item['s'].split(':')[1] for item in res['data']]
     except:
-        return ["COMI", "FWRY", "TMGH", "SWDY"]
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH", "ABUK"]
 
-# 4. زر التشغيل بنظام "5-5"
+# 4. زر التشغيل والتحميل المباشر
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
-    if st.button('START SECURE BATCH SCAN (5 per step)', use_container_width=True):
+    if st.button('EXECUTE REAL-TIME SCAN', use_container_width=True):
         stocks = get_live_symbols()
         total = len(stocks)
         
@@ -45,17 +43,16 @@ with col2:
         progress_bar = st.progress(0)
         status_placeholder = st.empty()
         
-        with st.spinner('Accessing Market Data in Stealth Mode...'):
-            for i in range(0, total):
-                symbol = stocks[i]
+        with st.spinner('Accessing Live Market Stream...'):
+            for i, symbol in enumerate(stocks):
                 try:
-                    # تحديث الحالة لكل سهم
-                    status_placeholder.markdown(f"📡 **Batch Syncing:** `{symbol}` ({i+1}/{total})")
+                    # تحديث الحالة فوراً عشان تحس بالتحميل
+                    status_placeholder.markdown(f"📡 **Active Scan:** `{symbol}` ({i+1}/{total})")
                     progress_bar.progress((i + 1) / total)
                     
                     handler = TA_Handler(
                         symbol=symbol, screener="egypt", exchange="EGX",
-                        interval=Interval.INTERVAL_1_DAY, timeout=10
+                        interval=Interval.INTERVAL_1_DAY, timeout=5
                     )
                     analysis = handler.get_analysis()
                     rec = analysis.summary["RECOMMENDATION"]
@@ -68,14 +65,9 @@ with col2:
                             "Signal": rec.replace("_", " ")
                         })
                     
-                    # نظام الـ "خمسة خمسة"
-                    # بعد كل 5 أسهم، نصبر ثانية كاملة لراحة السيرفر
-                    if (i + 1) % 5 == 0:
-                        time.sleep(1.0 + random.uniform(0.1, 0.5))
-                    else:
-                        # بين كل سهم وسهم في نفس المجموعة، انتظار بسيط جداً
-                        time.sleep(0.2)
-                        
+                    # سرعة متوازنة: انتظار بسيط جداً لا يلاحظه المستخدم بس يحمي من البلوك
+                    time.sleep(0.05) 
+                    
                 except:
                     continue
 
@@ -89,18 +81,18 @@ with col2:
                 strong_buys = [item for item in results if "STRONG BUY" in item["Signal"]]
                 if strong_buys:
                     st.divider()
-                    st.markdown("### <div class='status-indicator'></div> High-Priority Momentum", unsafe_allow_html=True)
+                    st.markdown("### <div class='status-indicator'></div> Institutional Priority (Strong Buy)", unsafe_allow_html=True)
                     st.table(pd.DataFrame(strong_buys))
             else:
-                st.info("Scan Complete: No assets currently match the defined protocol.")
+                st.info("Analysis Complete: No assets currently match the defined growth protocol.")
 
 # 5. القسم القانوني
 st.markdown("""
     <div class="disclaimer-box">
         <strong>إخلاء مسؤولية قانوني:</strong><br>
-        هذه الأداة معلوماتية فقط. سوق المال متقلب والقرارات الاستثمارية مسؤولية المستخدم.
+        هذه الأداة للمساعدة المعلوماتية فقط. تداول الأوراق المالية ينطوي على مخاطر، والقرار النهائي مسؤوليتك.
     </div>
 """, unsafe_allow_html=True)
 
 st.divider()
-st.caption("WAHBA EGX | BATCH VERSION | © 2026")
+st.caption("WAHBA EGX | PROFESSIONAL VERSION | © 2026")
