@@ -5,123 +5,154 @@ import requests
 import time
 from datetime import datetime
 import pytz
+import feedparser
 
-# 1. إعدادات الوقت (إسكندرية) - يتوافق مع الصيفي والشتوي تلقائياً
+# --- 1. إعدادات الوقت (إسكندرية) ---
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_alex = datetime.now(egypt_tz)
 today_key = now_alex.strftime("%Y-%m-%d")
 
-st.set_page_config(page_title="Wahba EGX | All-Market Terminal", layout="wide")
+st.set_page_config(page_title="Wahba Intelligence | Mostafa Wahba", layout="wide")
 
-# 2. التنسيق والتحذير القانوني (الهروب من المسؤولية)
-st.markdown(f"""
+# --- 2. التصميم الاحترافي الفاخر ---
+st.markdown("""
     <style>
-    .main-header {{ text-align: center; padding: 10px; border-bottom: 2px solid #1e1e1e; }}
-    .risk-banner {{ background: rgba(255,0,0,0.1); border-right: 5px solid #ff4b4b; padding: 15px; direction: rtl; text-align: right; font-size: 13px; color: #ddd; }}
-    .opportunity-card {{ background: #0a0a0a; padding: 15px; border-radius: 10px; border: 1px solid #00ff00; margin-top: 20px; border-right: 5px solid #00ff00; }}
+    .stApp { background-color: #050505; color: #e0e0e0; }
+    .main-header { 
+        text-align: center; padding: 30px; border-bottom: 3px solid #00ff00; 
+        background: linear-gradient(180deg, #111 0%, #050505 100%);
+        margin-bottom: 30px; border-radius: 0 0 25px 25px;
+    }
+    .dev-name { color: #00ff00; font-family: 'Courier New', monospace; letter-spacing: 3px; font-size: 14px; font-weight: bold; }
+    .gold-box { 
+        background: linear-gradient(90deg, rgba(255,215,0,0.1) 0%, rgba(0,255,0,0.05) 100%);
+        border: 2px solid #ffd700; padding: 25px; border-radius: 15px; margin-bottom: 25px;
+        text-align: center; box-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+    }
+    .index-card { 
+        padding: 20px; border: 1px solid #333; border-radius: 15px; 
+        text-align: center; background: #0f0f0f;
+    }
     </style>
     <div class="main-header">
-        <h1 style="margin:0;">WAHBA EGX</h1>
-        <div style="color: #888; font-size: 12px; letter-spacing: 2px;">INFINITY SCANNER • ALEXANDRIA SYNC</div>
-    </div>
-    <div class="risk-banner">
-        <strong>⚠️ تحذير المخاطر:</strong> تداول الأوراق المالية يحتوي على مخاطر عالية. هذه الأداة تسحب البيانات آلياً من TradingView لغرض التحليل الفني فقط ولا تعتبر نصيحة مالية.
+        <div class="dev-name">ENGINEERED BY MOSTAFA WAHBA</div>
+        <h1 style="margin:10px 0; color:#ffffff; font-size: 40px;">WAHBA <span style="color:#00ff00;">EGX</span> INTELLIGENCE</h1>
+        <div style="color: #888; font-size: 15px;">Elite Algorithmic Trading v4.0</div>
     </div>
 """, unsafe_allow_html=True)
 
-# 3. دالة جلب "كل" الأسهم المندرجة في مصر بلا استثناء (Infinity)
-@st.cache_data(ttl=86400) # القائمة تتحدث مرة كل 24 ساعة لضمان التقاط الأسهم الجديدة
-def get_absolute_all_symbols():
+# --- 3. الدوال الذكية (الذاكرة المشتركة) ---
+
+@st.cache_data(ttl=3600)
+def get_index_data(symbol, date_key):
+    try:
+        handler = TA_Handler(symbol=symbol, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=5)
+        analysis = handler.get_analysis()
+        return {"price": analysis.indicators["close"], "change": analysis.indicators["change"]}
+    except: return None
+
+@st.cache_data(ttl=86400)
+def get_live_tickers():
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
-        # طلب "كل" البيانات المتاحة لماركت مصر بدون فلاتر
-        payload = {
-            "filter": [],
-            "options": {"lang": "en"},
-            "markets": ["egypt"],
-            "symbols": {"query": {"types": []}, "tickers": []},
-            "columns": ["name"]
-        }
+        payload = {"filter": [], "options": {"lang": "en"}, "markets": ["egypt"], "symbols": {"query": {"types": []}, "tickers": []}, "columns": ["name"]}
         res = requests.post(url, json=payload, timeout=15).json()
-        # سحب الرموز (Tickers) وتصفيتها من التكرار
-        all_found = [item['s'].split(':')[1] for item in res['data']]
-        return sorted(list(set(all_found)))
-    except:
-        # في حالة فشل السيرفر، قائمة طوارئ
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EFIH"]
+        return sorted(list(set([item['s'].split(':')[1] for item in res['data']])))
+    except: return ["COMI", "FWRY", "TMGH", "SWDY", "ANFI"]
 
-# 4. محرك التحليل وحفظ الإغلاق (5 أسهم + ثانية راحة للهروب من البلوك)
-@st.cache_data(ttl=43200)
-def run_infinity_scan(date_key):
-    symbols = get_absolute_all_symbols()
+@st.cache_data(ttl=14400) # ذاكرة مشتركة 4 ساعات لحماية السيرفر
+def run_intelligent_scan(date_key):
+    symbols = get_live_tickers()
     results = []
+    idx30 = get_index_data("EGX30", date_key)
     
-    total_market = len(symbols)
     progress_bar = st.progress(0)
-    status_msg = st.empty()
-    
+    status_text = st.empty()
+
     for i, symbol in enumerate(symbols):
         try:
-            status_msg.markdown(f"🔍 فحص السهم `{symbol}` ({i+1} من {total_market})")
-            
-            handler = TA_Handler(
-                symbol=symbol, 
-                screener="egypt", 
-                exchange="EGX",
-                interval=Interval.INTERVAL_1_DAY, 
-                timeout=5
-            )
+            status_text.text(f"🔍 تحليل فني دقيق: {symbol}")
+            handler = TA_Handler(symbol=symbol, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=7)
             analysis = handler.get_analysis()
             rec = analysis.summary["RECOMMENDATION"]
             
             if "BUY" in rec:
+                rsi = analysis.indicators["RSI"]
+                adx = analysis.indicators["ADX"]
+                
+                # حساب الرقم السري للتقييم (Score)
+                score = 1
+                if "STRONG" in rec: score += 2 # الشراء القوي يرفع السهم جداً
+                if 40 < rsi < 55: score += 2 # منطقة الـ "Sweet Spot" للزخم
+                if adx > 25: score += 1 # اتجاه صاعد قوي
+                if idx30 and idx30['change'] > 0: score += 1
+                
                 results.append({
-                    "السهم": symbol,
-                    "إغلاق": round(analysis.indicators["close"], 2),
-                    "RSI": round(analysis.indicators["RSI"], 2),
-                    "الإشارة": rec.replace("_", " "),
-                    "قوة الشراء": analysis.summary["BUY"]
+                    "السهم": symbol, 
+                    "السعر": round(analysis.indicators["close"], 2),
+                    "RSI": round(rsi, 2), 
+                    "قوة الاتجاه": round(adx, 2),
+                    "التقييم الرقمي": score,
+                    "النجوم": "⭐" * min(int(score), 5)
                 })
-            
-            # --- نظام الحماية (5 أسهم ثم ثانية راحة) ---
-            if (i + 1) % 5 == 0:
-                time.sleep(1.0)
-            
-            progress_bar.progress((i + 1) / total_market)
-        except:
-            continue
-            
-    status_msg.empty()
+            progress_bar.progress((i + 1) / len(symbols))
+            time.sleep(0.05)
+        except: continue
+        
+    status_text.empty()
     progress_bar.empty()
     return results
 
-# 5. العرض والتحكم
-st.write(f"📅 **تاريخ الجلسة:** {today_key} | 🕒 **توقيت الإسكندرية:** {now_alex.strftime('%I:%M %p')}")
+# --- 4. العرض الفعلي للنتائج ---
 
-if st.button('🚀 تشغيل مسح السوق بالكامل (بما فيها الأسهم الجديدة)', use_container_width=True):
-    # جلب القائمة أولاً لإظهار العدد للمستخدم
-    all_symbols = get_absolute_all_symbols()
-    st.info(f"📊 تم العثور على {len(all_symbols)} ورقة مالية مندرجة في البورصة المصرية حالياً.")
+# المؤشرات العامة
+c1, c2 = st.columns(2)
+for c, s, n in zip([c1, c2], ["EGX30", "EGX70EWI"], ["EGX 30", "EGX 70"]):
+    data = get_index_data(s, today_key)
+    if data:
+        clr = "#00ff00" if data['change'] >= 0 else "#ff4b4b"
+        c.markdown(f"""<div class="index-card">
+            <div style="font-size:14px; color:#888;">{n}</div>
+            <div style="color:{clr}; font-size:28px; font-weight:bold;">{data['price']:,.2f}</div>
+        </div>""", unsafe_allow_html=True)
+
+st.write("")
+
+if st.button('🚀 تشغيل رادار النخبة الذهبية', use_container_width=True):
+    report_data = run_intelligent_scan(today_key)
+    st.session_state.final_results = pd.DataFrame(report_data)
+
+if 'final_results' in st.session_state and st.session_state.final_results is not None:
+    df = st.session_state.final_results
     
-    with st.spinner("جاري تحليل الإغلاق وحفظ البيانات..."):
-        report = run_infinity_scan(today_key)
+    # --- الوظيفة الجديدة: نخبة النخبة (أفضل سهمين) ---
+    st.markdown("<br>", unsafe_allow_html=True)
+    golden_picks = df.sort_values(by="التقييم الرقمي", ascending=False).head(2)
+    
+    if not golden_picks.empty:
+        st.markdown(f"""
+            <div class="gold-box">
+                <h2 style="color:#ffd700; margin:0;">💎 نخبة النخبة (Golden Picks)</h2>
+                <p style="color:#888;">أقوى سهمين في البورصة المصرية بناءً على التحليل الرقمي اليوم</p>
+            </div>
+        """, unsafe_allow_html=True)
         
-        if report:
-            df = pd.DataFrame(report)
-            
-            # قسم أفضل فرص الصعود
-            st.markdown("<div class='opportunity-card'><h3 style='margin:0; color:#00ff00;'>🚀 أفضل فرص الصعود المكتشفة</h3></div>", unsafe_allow_html=True)
-            top_picks = df[(df['الإشارة'] == "STRONG BUY") & (df['RSI'] < 65)].sort_values(by="قوة الشراء", ascending=False).head(5)
-            if not top_picks.empty:
-                st.table(top_picks[['السهم', 'إغلاق', 'RSI', 'الإشارة']])
-            
-            # جدول كافة الأسهم الإيجابية
-            st.divider()
-            st.markdown(f"### 📊 كافة فرص الشراء المتاحة ({len(df)} سهم)")
-            st.table(df[['السهم', 'إغلاق', 'RSI', 'الإشارة']].sort_values(by="الإشارة", ascending=False))
-        else:
-            st.info("لم يتم العثور على إشارات شراء قوية في إغلاق اليوم.")
+        # عرض السهمين في كروت كبيرة
+        gc1, gc2 = st.columns(2)
+        for col, (_, row) in zip([gc1, gc2], golden_picks.iterrows()):
+            col.markdown(f"""
+                <div style="background:#1a1a1a; padding:20px; border-radius:15px; border-left:5px solid #ffd700; text-align:center;">
+                    <h1 style="color:#00ff00; margin:0;">{row['السهم']}</h1>
+                    <div style="font-size:24px; color:#fff;">{row['السعر']} EGP</div>
+                    <div style="color:#ffd700; font-size:20px;">{row['النجوم']}</div>
+                    <div style="color:#555; font-size:12px;">RSI: {row['RSI']} | ADX: {row['قوة الاتجاه']}</div>
+                </div>
+            """, unsafe_allow_html=True)
 
-# 6. التذييل
-st.divider()
-st.caption("WAHBA EGX | Universal v7.0 | Alexandria Time Sync")
+    st.divider()
+    
+    # باقي القوائم كما هي
+    st.markdown("### 📊 القائمة الكاملة للفرص الإيجابية")
+    st.dataframe(df[['السهم', 'السعر', 'RSI', 'النجوم']], use_container_width=True, hide_index=True)
+
+st.markdown(f"<div style='text-align:center; color:#444; font-size:10px; padding:30px;'>Wahba Intelligence Protocol v4.0 | حقوق المطور مصطفى وهبة محفوظة</div>", unsafe_allow_html=True)
