@@ -1,2 +1,6 @@
-tradingview-ta
 streamlit
+tradingview-ta
+pandas
+requests
+pytz
+feedparser
