@@ -1,6 +1,6 @@
 streamlit
-tradingview-ta
+google-generativeai
+tradingview_ta
 pandas
 requests
 pytz
-feedparser
