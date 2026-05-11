@@ -4,90 +4,77 @@ import pandas as pd
 import requests
 from datetime import datetime
 import pytz
-import google.generativeai as genai
-import json
-import time
 
-# --- 1. إعدادات الذكاء الاصطناعي (Sovereign AI) ---
-GEMINI_API_KEY = "AIzaSyAHLshGDTIRhodR1CMAWGP_DH3622aADJQ" 
-genai.configure(api_key=GEMINI_API_KEY)
-ai_model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-
-# --- 2. إعدادات الوقت (توقيت القاهرة) ---
+# --- 1. إعدادات الوقت (القاهرة أوتوماتيك) ---
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-st.set_page_config(page_title="Wahba Swing Intelligence", layout="wide")
+st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 3. التصميم المؤسسي الذهبي (Wahba UI) ---
+# --- 2. التصميم المؤسسي ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-    * { font-family: 'Tajawal', sans-serif; }
+    * { font-family: 'Tajawal', sans-serif; direction: rtl; }
     .stApp { background-color: #000000; color: #ffffff; }
     
-    .nav-bar { text-align: center; padding: 30px; border-bottom: 2px solid #d4af37; margin-bottom: 30px; }
-    .logo-text { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 1px; }
+    /* الهيدر */
+    .nav-bar {
+        text-align: center; padding: 30px; background: #000;
+        border-bottom: 2px solid #d4af37; margin-bottom: 20px;
+    }
+    .logo-text { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 2px; }
     .logo-text span { color: #d4af37; }
 
-    .swing-card {
-        background: linear-gradient(145deg, #0a0a0a, #111); border: 1px solid #d4af37;
-        border-radius: 15px; padding: 25px; margin-bottom: 20px;
-        border-right: 8px solid #d4af37; position: relative;
+    /* التصنيفات */
+    .section-header {
+        color: #d4af37; border-right: 5px solid #d4af37;
+        padding-right: 15px; margin: 40px 0 20px 0; font-size: 24px; font-weight: bold;
+        text-align: right;
     }
-    .explosive-card {
-        background: linear-gradient(145deg, #0a0a0a, #111); border: 1px solid #ff4b4b;
-        border-radius: 15px; padding: 25px; margin-bottom: 20px;
-        border-right: 8px solid #ff4b4b; position: relative;
+
+    /* كروت الأسهم الذهبية */
+    .stock-card {
+        background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 15px;
+        padding: 25px; margin-bottom: 20px; border-top: 3px solid #d4af37;
+        text-align: right;
     }
-    .badge {
-        position: absolute; top: 0; left: 0; padding: 5px 15px;
-        font-weight: 900; font-size: 10px; border-bottom-right-radius: 10px;
+    .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
+    .price-val { font-size: 24px; font-weight: bold; color: #fff; }
+    
+    /* مستويات الدعم والمقاومة */
+    .levels-grid {
+        display: flex; justify-content: space-around; margin-top: 20px;
+        background: #000; padding: 10px; border-radius: 8px; border: 1px solid #111;
+        direction: ltr; /* للأرقام */
     }
-    .logic-box {
-        background: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px;
-        margin-top: 15px; border: 1px solid #222; font-size: 14px;
-    }
+    .level-item { text-align: center; }
+    .label { font-size: 12px; color: #777; display: block; margin-bottom: 5px; }
+    .num { font-size: 16px; font-weight: bold; color: #d4af37; font-family: monospace; }
+
+    /* زر التشغيل */
     .stButton>button {
-        background: linear-gradient(90deg, #d4af37, #f2d06b) !important;
-        color: #000 !important; font-weight: 900 !important; height: 60px !important;
-        border-radius: 12px !important; width: 100% !important; border: none !important;
+        background: #d4af37 !important; color: #000 !important;
+        font-weight: 900 !important; border-radius: 10px !important;
+        height: 60px !important; width: 100% !important; border: none !important;
+        font-size: 20px !important;
+    }
+    
+    /* التذييل */
+    .footer-box {
+        margin-top: 80px; padding: 40px; text-align: center;
+        border-top: 1px solid #1a1a1a; color: #666; font-size: 14px;
     }
     </style>
+    
     <div class="nav-bar">
-        <div class="logo-text">WAHBA <span>SWING INTELLIGENCE</span></div>
-        <p style="color:#666; font-size:12px;">نخبة النخبة: نظام صيد موجات السوينج والانفجارات</p>
+        <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
+        <p style="color:#666; font-size:12px; letter-spacing: 3px;">المنصة الذكية لتحليل البورصة المصرية</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 4. محرك الفلترة والتصنيف الذكي ---
-
-def classify_swing_elite(sym, data):
-    """الذكاء الاصطناعي يقوم بدور مدير الصندوق لتحليل وايكوف وإليوت"""
-    try:
-        tech_context = (f"Stock: {sym}, Price: {data['Price']}, RSI: {data['RSI']}, "
-                        f"Signal: {data['Signal']}, Support: {data['S1']}, Resistance: {data['R1']}")
-        
-        prompt = f"""
-        Act as a Master Swing Trader (Wyckoff & Elliott Wave specialist).
-        Data: {tech_context}.
-        
-        Rules:
-        1. 'STEADY_SWING': Clear uptrend, safe entries, Wave 3 or 5.
-        2. 'EXPLOSIVE_SWING': Wyckoff Spring, Squeeze, or imminent massive Breakout.
-        3. 'REJECT': Weak structure or overbought.
-        
-        Return JSON ONLY:
-        {{
-            "status": "STEADY_SWING" or "EXPLOSIVE_SWING" or "REJECT",
-            "logic": "Explain the swing setup in 2 brief lines in Arabic"
-        }}
-        """
-        response = ai_model.generate_content(prompt)
-        res = json.loads(response.text.strip().replace('```json', '').replace('```', ''))
-        return res
-    except: return {"status": "REJECT"}
+# --- 3. محرك البيانات ---
 
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
@@ -95,59 +82,104 @@ def fetch_egx_list(date_key):
         url = "https://scanner.tradingview.com/egypt/scan"
         res = requests.post(url, json={"filter": [{"left": "market_cap_basic", "operation": "nempty"}], "markets": ["egypt"], "columns": ["name"]}, timeout=15).json()
         return [item['s'].split(':')[1] for item in res['data'] if not item['s'].split(':')[1].isdigit()]
-    except: return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
+    except: 
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC"]
 
-# --- 5. التنفيذ والعرض ---
-
-if st.button("🚀 بدء مسح نخبة السوينج (EGX SCAN)"):
-    symbols = fetch_egx_list(today_key)
+@st.cache_data(ttl=3600, show_spinner=False)
+def run_strategic_scan(date_key):
+    symbols = fetch_egx_list(date_key)
+    results = []
     p_bar = st.progress(0)
     
-    col1, col2 = st.columns(2)
-    with col1: st.markdown("### 🔥 أسهم الانفجار الوشيك")
-    with col2: st.markdown("### 📈 أسهم الصعود المستمر")
-
-    scan_limit = 30
-    for i, sym in enumerate(symbols[:scan_limit]):
+    for i, sym in enumerate(symbols):
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=10)
             analysis = handler.get_analysis()
             ind = analysis.indicators
+            rec = analysis.summary["RECOMMENDATION"]
             
-            stock_data = {
-                "Price": round(ind.get("close"), 2), "RSI": round(ind.get("RSI"), 2),
-                "S1": round(ind.get("Pivot.M.Classic.S1"), 2), "R1": round(ind.get("Pivot.M.Classic.R1"), 2),
-                "Signal": analysis.summary["RECOMMENDATION"]
-            }
-
-            decision = classify_swing_elite(sym, stock_data)
-
-            if decision['status'] == "EXPLOSIVE_SWING":
-                with col1:
-                    st.markdown(f"""
-                        <div class="explosive-card">
-                            <div class="badge" style="background:#ff4b4b;">EXPLOSIVE SWING</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:28px; font-weight:900; color:#ff4b4b;">{sym}</span>
-                                <span style="font-size:22px; font-weight:bold;">{stock_data['Price']} EGP</span>
-                            </div>
-                            <div class="logic-box"><b>🦅 الرؤية:</b> {decision['logic']}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+            score = 0
+            if "STRONG_BUY" in rec: score += 5
+            elif "BUY" in rec: score += 3
             
-            elif decision['status'] == "STEADY_SWING":
-                with col2:
-                    st.markdown(f"""
-                        <div class="swing-card">
-                            <div class="badge" style="background:#d4af37;">STEADY SWING</div>
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span style="font-size:28px; font-weight:900; color:#d4af37;">{sym}</span>
-                                <span style="font-size:22px; font-weight:bold;">{stock_data['Price']} EGP</span>
-                            </div>
-                            <div class="logic-box"><b>🦅 الرؤية:</b> {decision['logic']}</div>
-                        </div>
-                    """, unsafe_allow_html=True)
+            # فلتر RSI للقوة النسبية
+            rsi_val = ind.get("RSI")
+            if rsi_val and 50 <= rsi_val <= 70: score += 3
+            
+            # فلتر المتوسطات المتحركة
+            if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
+
+            results.append({
+                "Symbol": sym, 
+                "Price": round(ind.get("close"), 2), 
+                "Score": score,
+                "S1": round(ind.get("Pivot.M.Classic.S1"), 2),
+                "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
+                "R1": round(ind.get("Pivot.M.Classic.R1"), 2),
+                "Signal": rec
+            })
         except: continue
-        p_bar.progress((i + 1) / scan_limit)
+        p_bar.progress((i + 1) / len(symbols))
+    
+    p_bar.empty()
+    return pd.DataFrame(results)
 
-st.markdown('<div style="text-align:center; padding:50px; color:#333; font-size:10px;">WAHBA SWING TERMINAL © 2026</div>', unsafe_allow_html=True)
+# --- 4. واجهة التحكم والعرض ---
+
+st.write(f"🕒 توقيت التقرير: {now_egypt.strftime('%H:%M')} | {today_key}")
+
+if st.button('🚀 إصدار التقرير الذهبي للبورصة المصرية'):
+    st.session_state.final_report = run_strategic_scan(today_key)
+
+if 'final_report' not in st.session_state:
+    st.session_state.final_report = None
+
+data = st.session_state.final_report
+
+if data is not None and not data.empty:
+    
+    # تصنيف 1: نخبة النخبة
+    t1 = data[data['Score'] >= 8].sort_values(by="Score", ascending=False)
+    if not t1.empty:
+        st.markdown('<div class="section-header">🏆 نخبة فرص الصعود (أعلى دقة)</div>', unsafe_allow_html=True)
+        for _, row in t1.iterrows():
+            st.markdown(f"""
+            <div class="stock-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
+                    <span class="symbol-name">{row['Symbol']}</span>
+                    <span style="color:#d4af37; font-weight:bold; background: #1a1a1a; padding: 5px 15px; border-radius: 20px;">{row['Signal']}</span>
+                </div>
+                <div class="price-val">{row['Price']} <small style="font-size:12px; color:#666;">ج.م</small></div>
+                <div class="levels-grid">
+                    <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{row['S1']}</span></div>
+                    <div class="level-item"><span class="label">PIVOT (ارتكاز)</span><span class="num">{row['P']}</span></div>
+                    <div class="level-item"><span class="label">R1 (مقاومة)</span><span class="num">{row['R1']}</span></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+    # تصنيف 2: الأسهم الواعدة
+    t2 = data[(data['Score'] >= 5) & (data['Score'] < 8)]
+    if not t2.empty:
+        st.markdown('<div class="section-header">💎 أسهم إيجابية واعدة</div>', unsafe_allow_html=True)
+        cols = st.columns(2)
+        for idx, row in t2.reset_index().iterrows():
+            with cols[idx % 2]:
+                st.markdown(f"""
+                <div class="stock-card" style="border-top: 1px solid #d4af37; padding: 15px;">
+                    <div style="font-size:22px; font-weight:900; color:#fff;">{row['Symbol']}</div>
+                    <div style="color:#d4af37; font-size:20px; font-weight:bold;">{row['Price']} ج.م</div>
+                    <div style="font-size:13px; color:#777; margin-top:10px; direction: ltr;">
+                        R1: {row['R1']} | Pivot: {row['P']} | S1: {row['S1']}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+# --- 5. التذييل الفاخر ---
+st.markdown("""
+    <div class="footer-box">
+        <p style="font-weight:bold; color:#d4af37; font-size: 16px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
+        <p>تم استخراج البيانات بناءً على التحليل الفني لـ TradingView. القرار الاستثماري مسؤوليتك الشخصية.</p>
+        <p>© 2026 جميع الحقوق محفوظة</p>
+    </div>
+""", unsafe_allow_html=True)
