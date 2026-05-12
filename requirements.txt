@@ -1,6 +1,6 @@
 streamlit
-google-generativeai
 tradingview_ta
 pandas
 requests
 pytz
+google-generativeai
