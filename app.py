@@ -14,42 +14,37 @@ API_KEY = "YOUR_API_KEY_HERE"
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-def get_ai_final_verdict(stocks_list):
-    """الـ AI يحلل القائمة النهائية كلها مرة واحدة ويعطي رأيه في 'نخبة النخبة'"""
-    if not stocks_list: return "لا توجد فرص قوية حالياً."
-    
-    names = ", ".join([s['sym'] for s in stocks_list])
-    prompt = f"بصفتك خبير في البورصة المصرية، هذه قائمة الأسهم الأقوى حالياً: {names}. أعطِ نصيحة استثمارية قصيرة جداً (سطرين) عن أفضلهم للتحرك القادم."
-    
+def get_ai_analysis(stock):
+    """تحليل مركّز لنخبة النخبة فقط"""
+    prompt = f"حلل سهم {stock['sym']} سعره الحالي {stock['price']}. الـ RSI هو {stock['rsi']}. اعطِ تحليل فني سريع (سطر واحد) يشمل نقطة دخول وهدف."
     try:
-        time.sleep(1) # تأمين ضد الحظر
+        time.sleep(1.5) # تهدئة الطلبات لضمان عدم التعليق
         response = model.generate_content(prompt)
         return response.text.strip()
     except:
-        return "تحليل الـ AI متاح عند استقرار الاتصال."
+        return "جاري تحديث الرؤية الفنية..."
 
 # ==========================================
-# 2. إدارة البيانات (Cache System)
+# 2. نظام حفظ البيانات (Database)
 # ==========================================
-DB_FILE = "wahba_pro_cache.csv"
+DB_FILE = "wahba_nokhba_exclusive.csv"
 
-def save_cache(data, ai_opinion):
+def save_to_db(data):
     df = pd.DataFrame(data)
-    df['ai_opinion'] = ai_opinion
     df['date'] = datetime.now().strftime("%Y-%m-%d")
     df.to_csv(DB_FILE, index=False, encoding='utf-8-sig')
 
-def load_cache():
+def load_from_db():
     if os.path.exists(DB_FILE):
         df = pd.read_csv(DB_FILE)
         if not df.empty and str(df['date'].iloc[0]) == datetime.now().strftime("%Y-%m-%d"):
-            return df.to_dict('records'), df['ai_opinion'].iloc[0]
-    return None, None
+            return df.to_dict('records')
+    return None
 
 # ==========================================
-# 3. الواجهة الاحترافية (Black & Gold)
+# 3. الواجهة (Black & Gold Professional)
 # ==========================================
-st.set_page_config(page_title="Wahba Intelligence Pro", layout="wide")
+st.set_page_config(page_title="Wahba AI | Nokhba Only", layout="wide")
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -58,13 +53,12 @@ st.markdown("""
         background-color: #000; color: #fff;
     }
     .card {
-        background: #0a0a0a; border-radius: 20px; padding: 25px; margin-bottom: 20px;
+        background: #0a0a0a; border-radius: 15px; padding: 25px; margin-bottom: 20px;
         border-right: 8px solid #d4af37; border-left: 1px solid #1a1a1a;
     }
-    .ai-summary {
-        background: linear-gradient(135deg, #0d1a0d 0%, #000 100%);
-        color: #00ff00; padding: 25px; border-radius: 15px;
-        border: 1px dashed #004400; margin-bottom: 30px; font-size: 20px;
+    .ai-insight {
+        background: #0d1a0d; color: #00ff00; padding: 15px; border-radius: 10px;
+        border: 1px solid #004400; margin-top: 15px; font-size: 16px;
     }
     .stButton>button {
         background: linear-gradient(90deg, #d4af37, #b8860b) !important;
@@ -74,12 +68,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 style="text-align:center; color:#d4af37;">WAHBA INTELLIGENCE | نخبة البورصة</h1>', unsafe_allow_html=True)
+st.markdown('<h1 style="text-align:center; color:#d4af37;">WAHBA AI | تحليل النخبة فقط</h1>', unsafe_allow_html=True)
 
 # ==========================================
-# 4. محرك المسح (The 283 Engine)
+# 4. محرك المسح (Scanning 283 Stocks)
 # ==========================================
-def get_all_symbols():
+def fetch_symbols():
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         res = requests.post(url, json={"markets": ["egypt"], "columns": ["name"]}, timeout=15).json()
@@ -87,66 +81,71 @@ def get_all_symbols():
     except:
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
 
-def run_wahba_core():
-    symbols = get_all_symbols()
-    nokhba = []
+def run_nokhba_system():
+    all_stocks = fetch_symbols()
+    nokhba_candidates = []
     
-    st.info(f"🚀 جاري مسح كافة أسهم البورصة ({len(symbols)} سهم)...")
-    progress = st.progress(0)
+    st.info(f"🚀 جاري فحص الـ {len(all_stocks)} سهم لتحديد نخبة النخبة...")
+    p1 = st.progress(0)
     status = st.empty()
     
-    # الجزء الأول: المسح الفني الصامت والشامل
-    for i, sym in enumerate(symbols):
+    # الخطوة 1: الفلترة الفنية (Strong Buy فقط)
+    for i, sym in enumerate(all_stocks):
         status.write(f"🔍 فحص راداري: {sym}")
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=2)
             analysis = handler.get_analysis()
-            rec = analysis.summary["RECOMMENDATION"]
-            
-            # فلترة قاسية: نختار فقط الـ STRONG_BUY (نخبة النخبة)
-            if "STRONG_BUY" in rec:
-                ind = analysis.indicators
-                nokhba.append({
-                    "sym": sym, "price": ind.get("close"), "rsi": ind.get("RSI"),
-                    "s1": ind.get("Pivot.M.Classic.S1"), "r1": ind.get("Pivot.M.Classic.R1")
+            if "STRONG_BUY" in analysis.summary["RECOMMENDATION"]:
+                nokhba_candidates.append({
+                    "sym": sym, "price": analysis.indicators["close"],
+                    "rsi": analysis.indicators["RSI"], "s1": analysis.indicators["Pivot.M.Classic.S1"],
+                    "r1": analysis.indicators["Pivot.M.Classic.R1"]
                 })
         except: continue
-        progress.progress((i + 1) / len(symbols))
-
-    # الجزء الثاني: رأي الـ AI في القائمة النهائية
-    if nokhba:
-        st.success(f"✅ تم العثور على {len(nokhba)} فرصة من ذهب.")
-        with st.spinner("🧠 جاري استشارة Wahba AI في النتائج..."):
-            ai_opinion = get_ai_final_verdict(nokhba)
-            save_cache(nokhba, ai_opinion)
-            st.rerun()
-    else:
-        st.warning("السوق حالياً في مرحلة تذبذب، لا توجد توصيات 'قوية جداً'.")
-
-# ==========================================
-# 5. منطق العرض والحفظ
-# ==========================================
-data, opinion = load_cache()
-
-if data:
-    st.markdown(f'<div class="ai-summary"><b>💡 رأي الذكاء الاصطناعي في جلسة اليوم:</b><br>{opinion}</div>', unsafe_allow_html=True)
+        p1.progress((i + 1) / len(all_stocks))
     
-    for s in data:
+    # الخطوة 2: تحليل الـ AI للحالات المختارة فقط
+    if nokhba_candidates:
+        st.success(f"🎯 تم العثور على {len(nokhba_candidates)} سهم نخبة. جاري تفعيل الـ AI لتحليلهم...")
+        final_list = []
+        p2 = st.progress(0)
+        for i, s in enumerate(nokhba_candidates):
+            status.write(f"🧠 AI يحلل النخبة: {s['sym']}")
+            s['ai_insight'] = get_ai_analysis(s)
+            final_list.append(s)
+            p2.progress((i + 1) / len(nokhba_candidates))
+            
+        save_to_db(final_list)
+        st.rerun()
+    else:
+        st.warning("السوق هادئ اليوم، لا توجد أسهم 'Strong Buy'.")
+
+# ==========================================
+# 5. العرض
+# ==========================================
+history = load_from_db()
+
+if history:
+    st.write(f"✅ نتائج نخبة الجلسة ({datetime.now().strftime('%Y-%m-%d')})")
+    for s in history:
         st.markdown(f"""
         <div class="card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:35px; font-weight:900; color:#d4af37;">{s['sym']}</span>
-                <span style="font-size:28px; font-family:monospace;">{float(s['price']):.2f} EGP</span>
+            <div style="display:flex; justify-content:space-between;">
+                <span style="font-size:30px; font-weight:900; color:#d4af37;">{s['sym']}</span>
+                <span style="font-size:25px;">{float(s['price']):.2f} EGP</span>
             </div>
-            <div style="color:#666; margin-top:10px;">RSI: {float(s['rsi']):.1f} | S1: {float(s['s1']):.2f} | R1: {float(s['r1']):.2f}</div>
+            <div class="ai-insight">
+                <b>🤖 رؤية Wahba AI:</b><br>{s['ai_insight']}
+            </div>
+            <div style="color:#555; font-size:13px; margin-top:10px;">
+                RSI: {float(s['rsi']):.1f} | دعم: {float(s['s1']):.2f} | مقاومة: {float(s['r1']):.2f}
+            </div>
         </div>
         """, unsafe_allow_html=True)
-
-    if st.button("🔄 تحديث المسح (Scan All 283)"):
+    
+    if st.button("🔄 تحديث المسح الشامل (283 سهم)"):
         if os.path.exists(DB_FILE): os.remove(DB_FILE)
         st.rerun()
 else:
-    if st.button("🚀 تفعيل المسح الشامل لنخبة النخبة"):
-        run_wahba_core()
-
-st.markdown('<div style="text-align:center; padding:50px; color:#333;">WAHBA PRO SYSTEM 2026</div>', unsafe_allow_html=True)
+    if st.button("🚀 ابدأ استخراج وتحليل النخبة"):
+        run_nokhba_system()
