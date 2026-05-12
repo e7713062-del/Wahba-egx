@@ -12,23 +12,20 @@ egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-# --- 2. إعداد الـ AI (بمفتاحك ونظام الحماية من الـ Timeout) ---
-API_KEY = "AIzaSyBlT4KWYOj58RE-cfHE_YNpwR1cfHW1pY0"
+# --- 2. إعداد الـ AI (كلاود جوجل Gemini) ---
+# حط هنا الـ API Key الجديد بتاعك
+API_KEY = "YOUR_NEW_API_KEY_HERE" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
-    """وظيفة الـ AI مع نظام محاولات لضمان عدم ظهور رسالة الخطأ"""
+    """وظيفة الـ AI مع نظام انتظار ذكي لتجنب الحظر"""
     prompt = f"""
     أنت محلل فني خبير في البورصة المصرية. حلل سهم {symbol}:
-    - السعر الحالي: {price}
-    - التوصية الفنية: {recommendation}
-    - مؤشر RSI: {rsi}
-    - الدعم الأول (S1): {s1}
-    - المقاومة الأولى (R1): {r1}
+    السعر الحالي: {price}، التوصية الفنية: {recommendation}، مؤشر RSI: {rsi}
     المطلوب رد احترافي في سطر واحد يتضمن: (رؤية السهم - هدف البيع الأول - نقطة وقف الخسارة).
     """
-    for attempt in range(3): # سيحاول 3 مرات لضمان الرد
+    for attempt in range(2):
         try:
             response = model.generate_content(prompt)
             if response and response.text:
@@ -38,9 +35,9 @@ def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
             continue
     return None
 
-st.set_page_config(page_title="Wahba Intelligence", layout="wide")
+st.set_page_config(page_title="Wahba Intelligence - Full Scanner", layout="wide")
 
-# --- 3. التصميم المؤسسي الكامل (CSS) - بدون حذف سطر واحد ---
+# --- 3. التصميم المؤسسي الكامل (CSS) - بدون حذف حرف ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -65,7 +62,7 @@ st.markdown("""
     .ai-insight-box {
         background: #111; border-right: 4px solid #d4af37;
         padding: 15px; margin: 20px 0; font-size: 15px; 
-        color: #e0e0e0; line-height: 1.6;
+        color: #00ff00; line-height: 1.6;
     }
 
     .levels-grid {
@@ -73,8 +70,6 @@ st.markdown("""
         background: #000; padding: 10px; border-radius: 8px; border: 1px solid #111;
         direction: ltr;
     }
-    .level-item { text-align: center; }
-    .label { font-size: 12px; color: #777; display: block; margin-bottom: 5px; }
     .num { font-size: 16px; font-weight: bold; color: #d4af37; font-family: monospace; }
 
     .stButton>button {
@@ -92,36 +87,40 @@ st.markdown("""
     
     <div class="nav-bar">
         <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
-        <p style="color:#666; font-size:12px; letter-spacing: 3px;">المنصة الذكية لتحليل البورصة المصرية</p>
+        <p style="color:#666; font-size:12px; letter-spacing: 3px;">المسح الشامل لجميع أسهم البورصة المصرية</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 4. محرك استخراج البيانات وحساب السكور ---
-@st.cache_data(ttl=86400)
-def fetch_egx_list(date_key):
+# --- 4. محرك المسح الشامل (Scanner Engine) ---
+def fetch_all_egx_symbols():
+    """جلب كافة الأسهم المسجلة في البورصة المصرية أوتوماتيكياً"""
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
-        res = requests.post(url, json={"filter": [{"left": "market_cap_basic", "operation": "nempty"}], "markets": ["egypt"], "columns": ["name"]}, timeout=15).json()
-        return [item['s'].split(':')[1] for item in res['data'] if not item['s'].split(':')[1].isdigit()]
-    except: 
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC"]
+        payload = {
+            "filter": [{"left": "market_cap_basic", "operation": "nempty"}],
+            "markets": ["egypt"],
+            "columns": ["name"]
+        }
+        res = requests.post(url, json=payload, timeout=15).json()
+        all_symbols = [item['s'].split(':')[1] for item in res['data'] if ':' in item['s']]
+        return sorted(list(set(all_symbols)))
+    except:
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
 
-def run_strategic_scan(date_key):
-    symbols = fetch_egx_list(date_key)
+def run_market_scan():
+    """مسح السوق بالكامل وحساب سكور وهبة"""
+    symbols = fetch_all_egx_symbols()
     results = []
-    
-    # فحص أفضل 12 سهم لضمان السرعة والجودة
-    active_symbols = symbols[:12] 
-    
     p_bar = st.progress(0)
-    for i, sym in enumerate(active_symbols):
+    
+    for i, sym in enumerate(symbols):
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=10)
             analysis = handler.get_analysis()
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # حساب سكور وهبة (Logic الكامل)
+            # --- سكور وهبة (Logic الكامل) ---
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
@@ -130,41 +129,41 @@ def run_strategic_scan(date_key):
             if rsi_val and 50 <= rsi_val <= 70: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
 
-            s1 = ind.get("Pivot.M.Classic.S1")
-            r1 = ind.get("Pivot.M.Classic.R1")
-            price = ind.get("close")
+            # استدعاء الـ AI للأسهم القوية فقط لتوفير الـ API
+            ai_text = ""
+            if score >= 3:
+                ai_text = get_ai_insight(sym, rec, rsi_val, ind.get("close"), ind.get("Pivot.M.Classic.S1"), ind.get("Pivot.M.Classic.R1"))
+                time.sleep(0.5) # فاصل زمني لحماية الـ API
 
-            # استدعاء الـ AI (شرط الظهور)
-            ai_insight = get_ai_insight(sym, rec, rsi_val, price, s1, r1)
-
-            if ai_insight:
-                results.append({
-                    "symbol": sym, "price": price, "rec": rec, "rsi": rsi_val,
-                    "score": score, "ai": ai_insight, "s1": s1, "r1": r1
-                })
-            p_bar.progress((i + 1) / len(active_symbols))
-        except: continue
+            results.append({
+                "symbol": sym, "price": ind.get("close"), "score": score,
+                "rec": rec, "ai": ai_text, "s1": ind.get("Pivot.M.Classic.S1"), "r1": ind.get("Pivot.M.Classic.R1")
+            })
+        except:
+            continue
+        p_bar.progress((i + 1) / len(symbols))
     return results
 
 # --- 5. العرض النهائي ---
-if st.button("تشغيل المسح الاستراتيجي"):
-    with st.spinner("جاري صيد الفرص وتحليل الذكاء الاصطناعي..."):
-        data = run_strategic_scan(today_key)
-        
-        if data:
-            for stock in sorted(data, key=lambda x: x['score'], reverse=True):
-                st.markdown(f"""
-                    <div class="stock-card">
-                        <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
-                        <div style="color:#888;">السكور: {stock['score']} | الحالة: {stock['rec']}</div>
-                        <div class="ai-insight-box"><b>🎯 رؤية Wahba AI:</b><br>{stock['ai']}</div>
-                        <div class="levels-grid">
-                            <div class="level-item"><span class="label">دعم (S1)</span><span class="num">{stock['s1']:.2f}</span></div>
-                            <div class="level-item"><span class="label">مقاومة (R1)</span><span class="num">{stock['r1']:.2f}</span></div>
+if st.button("بدء المسح الشامل للبورصة"):
+    with st.spinner("جاري صيد الفرص وتحليل السوق..."):
+        all_data = run_market_scan()
+        if all_data:
+            # الترتيب حسب السكور الأعلى (الزبدة أولاً)
+            for stock in sorted(all_data, key=lambda x: x['score'], reverse=True):
+                if stock['score'] >= 1:
+                    st.markdown(f"""
+                        <div class="stock-card">
+                            <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
+                            <div style="color:#888;">السكور الفني: {stock['score']} | الحالة: {stock['rec']}</div>
+                            {f'<div class="ai-insight-box"><b>🎯 رؤية Wahba AI:</b><br>{stock["ai"]}</div>' if stock['ai'] else ''}
+                            <div class="levels-grid">
+                                <div>دعم (S1): <span class="num">{stock['s1']:.2f}</span></div>
+                                <div>مقاومة (R1): <span class="num">{stock['r1']:.2f}</span></div>
+                            </div>
                         </div>
-                    </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
         else:
-            st.error("⚠️ لم نتمكن من جلب ردود الـ AI حالياً. يرجى المحاولة مرة أخرى.")
+            st.error("لم نتمكن من جلب البيانات، تأكد من الاتصال بالمفتاح الجديد.")
 
 st.markdown('<div class="footer-box">WAHBA INTELLIGENCE © 2026</div>', unsafe_allow_html=True)
