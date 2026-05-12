@@ -6,15 +6,16 @@ from datetime import datetime
 import pytz
 import google.generativeai as genai
 
-# --- 1. إعدادات الوقت (القاهرة أوتوماتيك) ---
+# --- 1. إعدادات الوقت (توقيت القاهرة) ---
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-# --- 2. إعداد الـ AI (بالمفتاح الجديد والشرط الصارم) ---
+# --- 2. إعداد الـ AI (بمفتاحك الجديد والشرط الصارم) ---
 API_KEY = "AIzaSyBlT4KWYOj58RE-cfHE_YNpwR1cfHW1pY0"
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-pro')
+# استخدام gemini-1.5-flash لضمان استجابة سريعة جداً وتجنب الـ Timeout
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
     """وظيفة الـ AI: تعيد النص فقط إذا نجحت، وإلا تعيد None لمنع عرض السهم"""
@@ -29,8 +30,8 @@ def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
     """
     try:
         response = model.generate_content(prompt)
-        if response.text and len(response.text) > 10:
-            return response.text
+        if response and response.text:
+            return response.text.strip()
         return None
     except Exception:
         return None
@@ -51,13 +52,6 @@ st.markdown("""
     }
     .logo-text { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 2px; }
     .logo-text span { color: #d4af37; }
-
-    /* التصنيفات */
-    .section-header {
-        color: #d4af37; border-right: 5px solid #d4af37;
-        padding-right: 15px; margin: 40px 0 20px 0; font-size: 24px; font-weight: bold;
-        text-align: right;
-    }
 
     /* كروت الأسهم الذهبية */
     .stock-card {
@@ -106,7 +100,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 4. محرك البيانات (كامل مع فلاتر السكور والـ AI) ---
+# --- 4. محرك البيانات (Data Engine) ---
 
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
@@ -122,7 +116,7 @@ def run_strategic_scan(date_key):
     symbols = fetch_egx_list(date_key)
     results = []
     
-    # فحص عدد محدد لضمان عدم حظر الـ API وتجاوز ليميت السرعة
+    # فحص أكبر 15 سهم لضمان اقتناص الفرص وسرعة الرد
     active_symbols = symbols[:15] 
     
     p_bar = st.progress(0)
@@ -133,34 +127,29 @@ def run_strategic_scan(date_key):
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # منطق السكور الخاص بك (كامل)
+            # حساب سكور وهبة (كامل)
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             
             rsi_val = ind.get("RSI")
             if rsi_val and 50 <= rsi_val <= 70: score += 3
+            # الربط بنقطة البيفوت المركزية
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
 
-            # بيانات التحليل
+            # بيانات الدعم والمقاومة والسعر
             s1 = ind.get("Pivot.M.Classic.S1")
             r1 = ind.get("Pivot.M.Classic.R1")
             price = ind.get("close")
 
-            # --- طوبة الشرط الصارم: استدعاء الـ AI أولاً ---
+            # --- الشرط الصارم: استدعاء الـ AI أولاً ---
             ai_insight = get_ai_insight(sym, rec, rsi_val, price, s1, r1)
 
-            # إذا نجح الـ AI فقط، يتم إضافة السهم للنتائج
+            # إذا نجح الـ AI فقط، يتم إضافة السهم للنتائج النهائية
             if ai_insight:
                 results.append({
-                    "symbol": sym,
-                    "price": price,
-                    "rec": rec,
-                    "rsi": rsi_val,
-                    "score": score,
-                    "ai": ai_insight,
-                    "s1": s1,
-                    "r1": r1
+                    "symbol": sym, "price": price, "rec": rec, "rsi": rsi_val,
+                    "score": score, "ai": ai_insight, "s1": s1, "r1": r1
                 })
             p_bar.progress((i + 1) / len(active_symbols))
         except: continue
@@ -168,30 +157,31 @@ def run_strategic_scan(date_key):
 
 # --- 5. العرض النهائي (UI) ---
 if st.button("تشغيل المسح الاستراتيجي"):
-    data = run_strategic_scan(today_key)
-    
-    if data:
-        # ترتيب حسب السكور الخاص بك
-        sorted_data = sorted(data, key=lambda x: x['score'], reverse=True)
+    with st.spinner("جاري صيد الفرص وتحليل الذكاء الاصطناعي..."):
+        data = run_strategic_scan(today_key)
         
-        for stock in sorted_data:
-            st.markdown(f"""
-                <div class="stock-card">
-                    <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
-                    <div style="color:#888;">التقييم: {stock['rec']} | السكور: {stock['score']} | RSI: {stock['rsi']:.1f}</div>
-                    
-                    <div class="ai-insight-box">
-                        <b style="color:#d4af37;">🎯 استراتيجية وهبة AI:</b><br>
-                        {stock['ai']}
-                    </div>
+        if data:
+            # ترتيب حسب الأعلى سكور (الأقوى فنياً)
+            sorted_data = sorted(data, key=lambda x: x['score'], reverse=True)
+            
+            for stock in sorted_data:
+                st.markdown(f"""
+                    <div class="stock-card">
+                        <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
+                        <div style="color:#888;">التقييم: {stock['rec']} | سكور: {stock['score']} | RSI: {stock['rsi']:.1f}</div>
+                        
+                        <div class="ai-insight-box">
+                            <b style="color:#d4af37;">🎯 استراتيجية وهبة AI:</b><br>
+                            {stock['ai']}
+                        </div>
 
-                    <div class="levels-grid">
-                        <div class="level-item"><span class="label">دعم (S1)</span><span class="num">{stock['s1']:.2f}</span></div>
-                        <div class="level-item"><span class="label">مقاومة (R1)</span><span class="num">{stock['r1']:.2f}</span></div>
+                        <div class="levels-grid">
+                            <div class="level-item"><span class="label">دعم (S1)</span><span class="num">{stock['s1']:.2f}</span></div>
+                            <div class="level-item"><span class="label">مقاومة (R1)</span><span class="num">{stock['r1']:.2f}</span></div>
+                        </div>
                     </div>
-                </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.warning("⚠️ لم يتم العثور على نتائج تحليلية حالياً، يرجى المحاولة مرة أخرى بعد قليل.")
+                """, unsafe_allow_html=True)
+        else:
+            st.error("⚠️ لم نتمكن من جلب ردود الـ AI حالياً. تأكد من ثبات الاتصال بالإنترنت وصلاحية مفتاح الـ API الخاص بك.")
 
 st.markdown('<div class="footer-box">WAHBA INTELLIGENCE © 2026</div>', unsafe_allow_html=True)
