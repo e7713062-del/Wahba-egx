@@ -7,132 +7,93 @@ from datetime import datetime
 import os
 
 # ==========================================
-# 1. إعدادات الـ AI (Gemini 1.5 Flash - Speed Optimized)
+# 1. إعدادات الـ AI والـ API
 # ==========================================
 API_KEY = "YOUR_API_KEY_HERE" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-def get_batch_ai_analysis(stocks_list):
-    """تحليل كل الأسهم في طلب واحد لسرعة البرق"""
-    if not stocks_list:
-        return {}
-
-    # بناء نص واحد يحتوي على بيانات كل الأسهم
-    stocks_data_text = "\n".join([
-        f"- {s['sym']}: السعر {s['price']}, RSI {s['rsi']:.1f}, فوق SMA20 و SMA50."
-        for s in stocks_list
-    ])
-
-    prompt = f"""
-    بصفتك خبير وول ستريت، حلل الأسهم التالية من البورصة المصرية بإيجاز شديد (نقطة دخول، هدف، وقف):
-    {stocks_data_text}
+def get_hybrid_analysis(stock):
+    """نظام هجين: يحاول مع الـ AI، وإذا فشل، يقوم بالمحاكاة برمجياً"""
     
-    رد بصيغة:
-    SYMBOL: التحليل باختصار.
-    """
+    # 1. محاكاة التحليل برمجياً (الخطة ب)
+    logic_analysis = f"نقطة الدخول: {stock['price']} EGP | "
+    if stock['rsi'] > 70:
+        logic_analysis += "الحالة: تشبع شرائي (احذر) | الهدف: {stock['r1']}"
+    elif stock['rsi'] < 40:
+        logic_analysis += "الحالة: تجميع | الهدف: {stock['sma20']}"
+    else:
+        logic_analysis += f"الحالة: عزم صاعد | الهدف: {stock['r1']}"
+    logic_analysis += f" | الوقف: {stock['s1']}"
+
+    # 2. محاولة جلب تحليل الـ AI
+    prompt = f"بصفتك خبير وول ستريت، حلل سهم {stock['sym']} سعره {stock['price']} ورسيه {stock['rsi']:.1f} بإيجاز (دخول، هدف، وقف)."
     
     try:
-        response = model.generate_content(prompt)
-        # تحويل الرد لقاموس لسهولة العرض
-        lines = response.text.strip().split('\n')
-        analysis_dict = {}
-        for line in lines:
-            if ':' in line:
-                sym, report = line.split(':', 1)
-                analysis_dict[sym.strip().replace('$','')] = report.strip()
-        return analysis_dict
+        # تقليل وقت الانتظار لسرعة الاستجابة
+        response = model.generate_content(prompt, generation_config={"max_output_tokens": 100})
+        return response.text.strip()
     except:
-        return {s['sym']: "⚠️ فشل التحليل السريع، راجع الشارت." for s in stocks_list}
+        # لو الـ AI فشل (زي ما حصل في الصورة 1000398601.jpg)، نرجع التحليل البرمجي
+        return f"🤖 [نظام محاكاة]: {logic_analysis}"
 
 # ==========================================
-# 2. الواجهة (Minimalist Wall Street)
+# 2. واجهة الـ Terminal المتطورة
 # ==========================================
-st.set_page_config(page_title="Wahba Ultra Fast Scanner", layout="wide")
+st.set_page_config(page_title="Wahba AI Hybrid Scanner", layout="wide")
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&family=Tajawal:wght@700;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono&display=swap');
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #050505; color: #fff; font-family: 'Tajawal', sans-serif;
-    }
-    .stButton>button {
-        background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; font-size: 20px;
+        background-color: #000; color: #00ff41; font-family: 'Roboto Mono', monospace;
     }
     .stock-card {
-        background: #0e0e0e; border: 1px solid #1a1a1a; padding: 20px; border-radius: 4px; margin-bottom: 15px;
+        border: 1px solid #1a1a1a; padding: 15px; border-radius: 2px; margin-bottom: 10px;
+        background: #050505; border-right: 4px solid #d4af37;
     }
-    .ai-flash { color: #00ff41; font-family: 'Roboto Mono', monospace; font-size: 15px; border-left: 2px solid #00ff41; padding-left: 10px; margin-top: 10px; }
+    .ai-response { color: #fff; font-size: 14px; margin-top: 8px; border-top: 1px solid #111; padding-top: 8px; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<h1 style="text-align:center; color:#d4af37;">ULTRA FAST | WALL STREET SCANNER</h1>', unsafe_allow_html=True)
+st.title("📟 WAHBA HYBRID SCANNER")
 
 # ==========================================
-# 3. محرك المسح السريع
+# 3. محرك المسح
 # ==========================================
-def fetch_all_tickers():
+if st.button("RUN SYSTEM SCAN"):
+    # (نفس كود جلب الأسهم السابق لضمان السرعة)
     url = "https://scanner.tradingview.com/egypt/scan"
-    try:
-        res = requests.post(url, json={"markets": ["egypt"], "columns": ["name"]}, timeout=10)
-        return [item['s'].split(':')[1] for item in res.json()['data']]
-    except:
-        return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
-
-CACHE_FILE = "fast_wallstreet_results.csv"
-
-if st.button("⚡ START FLASH SCAN"):
-    tickers = fetch_all_tickers()
-    qualified = []
+    res = requests.post(url, json={"markets": ["egypt"], "columns": ["name"]}, timeout=10)
+    tickers = [item['s'].split(':')[1] for item in res.json()['data']]
     
-    progress = st.progress(0)
+    qualified = []
     status = st.empty()
     
-    # الفحص الفني (سريع جداً)
-    for i, sym in enumerate(tickers):
-        if i % 20 == 0: status.write(f"Scanning: `{sym}`")
+    for i, sym in enumerate(tickers[:100]): # فحص أول 100 سهم لسرعة التجربة
         try:
-            handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=5)
+            handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=2)
             analysis = handler.get_analysis()
             ind = analysis.indicators
             
-            if (ind.get("close") > ind.get("SMA20")) and (ind.get("RSI") > 55) and ("BUY" in analysis.summary["RECOMMENDATION"]):
+            # فلتر وول ستريت
+            if (ind.get("close") > ind.get("SMA20")) and (ind.get("RSI") > 50):
                 qualified.append({
                     "sym": sym, "price": ind.get("close"), "rsi": ind.get("RSI"),
-                    "sma20": ind.get("SMA20"), "s1": ind.get("Pivot.M.Classic.S1")
+                    "s1": ind.get("Pivot.M.Classic.S1"), "r1": ind.get("Pivot.M.Classic.R1"),
+                    "sma20": ind.get("SMA20")
                 })
         except: continue
-        progress.progress((i + 1) / len(tickers))
 
-    # تحليل الـ AI (بسرعة البرق في طلب واحد)
     if qualified:
-        status.write("🧠 AI Flash Analysis in progress...")
-        ai_reports = get_batch_ai_analysis(qualified)
-        
         for s in qualified:
-            s['report'] = ai_reports.get(s['sym'], "⚠️ مراجعة يدوية")
-            
-        df = pd.DataFrame(qualified)
-        df['date'] = datetime.now().strftime("%Y-%m-%d")
-        df.to_csv(CACHE_FILE, index=False, encoding='utf-8-sig')
-        st.rerun()
-    else:
-        st.warning("No High-Probability setups found.")
-
-# ==========================================
-# 4. العرض
-# ==========================================
-if os.path.exists(CACHE_FILE):
-    df = pd.read_csv(CACHE_FILE)
-    if not df.empty and str(df['date'].iloc[0]) == datetime.now().strftime("%Y-%m-%d"):
-        for _, s in df.iterrows():
+            # هنا السحر: الكود بينادي الـ Hybrid Analysis
+            report = get_hybrid_analysis(s)
             st.markdown(f"""
             <div class="stock-card">
                 <div style="display:flex; justify-content:space-between;">
-                    <b style="font-size:25px; color:#d4af37;">$ {s['sym']}</b>
-                    <b style="font-size:20px;">{s['price']:.2f} EGP</b>
+                    <span style="color:#d4af37; font-weight:bold;">$ {s['sym']}</span>
+                    <span>{s['price']:.2f} EGP</span>
                 </div>
-                <div class="ai-flash">
-                    {s['report']}
-                </div>
+                <div class="ai-response">{report}</div>
             </div>
             """, unsafe_allow_html=True)
