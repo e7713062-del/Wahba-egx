@@ -9,17 +9,15 @@ import time
 import random
 
 # ==========================================
-# 1. الإعدادات الرقمية والذكاء الاصطناعي
+# 1. الإعدادات والذكاء الاصطناعي (Gemini)
 # ==========================================
-egypt_tz = pytz.timezone('Africa/Cairo')
-
 # ضع مفتاح الـ API الخاص بك هنا
 API_KEY = "YOUR_API_KEY_HERE"
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_ai_insight(symbol, recommendation, rsi, price):
-    """تحليل AI مع حماية كاملة من التوقف"""
+    """تحليل AI مع حماية كاملة من توقف البرنامج"""
     prompt = f"حلل سهم {symbol}: سعر {price}، توصية {recommendation}، RSI {rsi}. سطر واحد فقط: هدف ووقف."
     try:
         response = model.generate_content(prompt)
@@ -30,7 +28,7 @@ def get_ai_insight(symbol, recommendation, rsi, price):
         return "جاري محاولة التحليل مرة أخرى..."
 
 # ==========================================
-# 2. تصميم الواجهة الكامل (CSS) - طوبة طوبة
+# 2. تصميم الواجهة بالكامل (CSS) - طوبة طوبة
 # ==========================================
 st.set_page_config(page_title="Wahba Intelligence Pro", layout="wide")
 
@@ -120,8 +118,12 @@ st.markdown("""
 st.markdown('<div class="nav-header"><div class="logo">WAHBA <span>INTELLIGENCE</span></div></div>', unsafe_allow_html=True)
 
 # ==========================================
-# 3. محرك المسح (The Scanning Engine)
+# 3. محرك المسح المستمر (The Non-Stop Engine)
 # ==========================================
+# تهيئة الذاكرة لحفظ الأسهم المكتشفة
+if 'found_stocks' not in st.session_state:
+    st.session_state.found_stocks = []
+
 def get_symbols():
     """جلب كل رموز الأسهم المصرية"""
     try:
@@ -132,11 +134,13 @@ def get_symbols():
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC"]
 
 def run_scan():
-    """تنفيذ المسح طوبة طوبة مع عرض فوري للنتائج"""
+    """تنفيذ المسح وحفظ النتائج في الذاكرة"""
     symbols = get_symbols()
+    st.session_state.found_stocks = [] # تصفير القائمة لبدء مسح جديد
+    
     progress_bar = st.progress(0)
     status_msg = st.empty()
-    results_container = st.container()
+    results_area = st.container() # حاوية العرض الحي
     
     for i, sym in enumerate(symbols):
         status_msg.markdown(f"📡 **جاري فحص السوق المصري:** {sym} ({i+1}/{len(symbols)})")
@@ -147,26 +151,34 @@ def run_scan():
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # سكور مصطفى وهبة المطور
+            # سكور وهبة (مصمم لعام 2026)
             score = 0
             if "BUY" in rec: score += 5
             rsi = ind.get("RSI", 50)
             if 45 <= rsi <= 65: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
             
-            # عرض السهم فوراً إذا كان عليه فرصة (Score 5+)
+            # لو السهم عليه فرصة قوية (سكور 5 فأعلى)
             if score >= 5:
                 ai_text = get_ai_insight(sym, rec, rsi, ind.get("close"))
                 
-                with results_container:
+                stock_data = {
+                    "sym": sym, "price": ind.get("close"), "score": score,
+                    "rec": rec, "ai": ai_text, 
+                    "s1": ind.get("Pivot.M.Classic.S1"), "r1": ind.get("Pivot.M.Classic.R1")
+                }
+                st.session_state.found_stocks.append(stock_data)
+                
+                # عرض فوري داخل الحاوية
+                with results_area:
                     st.markdown(f"""
                     <div class="card">
                         <div class="card-title">
                             <span>{sym}</span>
                             <span class="price">{ind.get("close"):.2f} EGP</span>
                         </div>
-                        <div style="color: #888; font-size: 20px;">سكور: {score} | التوصية الفنية: {rec}</div>
-                        <div class="ai-box"><b>🎯 رؤية Wahba AI:</b> {ai_text}</div>
+                        <div style="color: #888; font-size: 20px;">سكور: {score} | التوصية: {rec}</div>
+                        <div class="ai-box"><b>🎯 رؤية وهبة AI:</b> {ai_text}</div>
                         <div class="levels">
                             <span>S1 (دعم): {ind.get("Pivot.M.Classic.S1"):.2f}</span>
                             <span>R1 (مقاومة): {ind.get("Pivot.M.Classic.R1"):.2f}</span>
@@ -174,11 +186,9 @@ def run_scan():
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # وقت انتظار لضمان استقرار الاتصال ومنع الحظر
-                time.sleep(1.5)
+                time.sleep(1.2) # انتظار هادئ لمنع الحظر
             else:
-                # سهم عادي، ننتظر قليلاً ونكمل
-                time.sleep(0.5)
+                time.sleep(0.4)
                 
         except Exception:
             continue
@@ -188,9 +198,14 @@ def run_scan():
     status_msg.success("✅ تم الانتهاء من المسح الشامل 10/10!")
 
 # ==========================================
-# 4. زر التشغيل النهائي
+# 4. منطقة التشغيل والعرض الدائم
 # ==========================================
 if st.button("تفعيل المسح الشامل (10/10) - ابدأ الآن"):
     run_scan()
+
+# ضمان بقاء النتائج حتى لو المسح خلص أو الصفحة عملت ريفريش
+if st.session_state.found_stocks and not st.empty():
+    st.write("---")
+    st.info(f"تم العثور على {len(st.session_state.found_stocks)} فرص قوية في السوق المصري.")
 
 st.markdown('<div style="text-align:center; padding:100px; color:#444; font-size:14px; border-top:1px solid #111;">WAHBA INTELLIGENCE SYSTEM © 2026 | تطوير مصطفى وهبة</div>', unsafe_allow_html=True)
