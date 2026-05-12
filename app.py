@@ -9,7 +9,7 @@ import time
 import random
 
 # ==========================================
-# 1. إعدادات الوقت والمنطقة الزمنية
+# 1. إعدادات المنطقة الزمنية والوقت
 # ==========================================
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
@@ -17,29 +17,31 @@ now_egypt = datetime.now(egypt_tz)
 # ==========================================
 # 2. إعدادات الذكاء الاصطناعي (Gemini)
 # ==========================================
-# تأكد من وضع الـ API Key الخاص بك هنا
-API_KEY = "YOUR_NEW_API_KEY" 
+# استبدل YOUR_API_KEY بمفتاحك الحقيقي
+API_KEY = "YOUR_API_KEY_HERE" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_ai_insight(symbol, recommendation, rsi, price):
     """
-    وظيفة مخصصة لجلب تحليل AI مع معالجة الأخطاء
+    وظيفة مخصصة للتواصل مع Gemini AI لتحليل السهم تقنياً
     """
-    prompt = f"حلل سهم {symbol}: السعر الحالي {price}، التوصية {recommendation}، مؤشر RSI {rsi}. أعطني سطر واحد فقط فيه: (الرؤية الفنية - الهدف - وقف الخسارة)."
+    prompt = f"حلل سهم {symbol}: السعر {price}، التوصية {recommendation}، RSI {rsi}. أعطني سطر واحد فقط فيه: (الرؤية الفنية - الهدف - وقف الخسارة)."
     try:
         response = model.generate_content(prompt)
         if response and response.text:
             return response.text.strip()
+        else:
+            return None
     except Exception:
         return None
-    return None
 
 # ==========================================
-# 3. إعدادات الصفحة والتصميم (CSS)
+# 3. إعدادات واجهة المستخدم (التصميم الكامل)
 # ==========================================
-st.set_page_config(page_title="Wahba Intelligence - Full Scanner", layout="wide")
+st.set_page_config(page_title="Wahba Intelligence - Pro Scanner", layout="wide")
 
+# تصميم CSS كامل بدون أي اختصار
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -56,21 +58,29 @@ st.markdown("""
     
     .nav-bar {
         text-align: center;
-        padding: 40px;
+        padding: 45px;
         background: #000;
         border-bottom: 2px solid #d4af37;
-        margin-bottom: 30px;
+        margin-bottom: 35px;
     }
     
     .logo-text {
-        font-size: 40px;
+        font-size: 45px;
         font-weight: 900;
         color: #ffffff;
-        letter-spacing: 3px;
+        letter-spacing: 4px;
+        margin: 0;
     }
     
     .logo-text span {
         color: #d4af37;
+    }
+
+    .status-sub {
+        color: #666666;
+        font-size: 14px;
+        letter-spacing: 2px;
+        margin-top: 10px;
     }
 
     .stock-card {
@@ -79,32 +89,38 @@ st.markdown("""
         border-radius: 15px;
         padding: 30px;
         margin-bottom: 25px;
-        border-top: 4px solid #d4af37;
+        border-top: 5px solid #d4af37;
         text-align: right;
+        transition: 0.3s;
+    }
+    
+    .stock-card:hover {
+        border-top: 5px solid #ffffff;
+        background: #0f0f0f;
     }
     
     .symbol-name {
-        font-size: 32px;
+        font-size: 35px;
         font-weight: 900;
         color: #d4af37;
     }
     
     .price-val {
-        font-size: 26px;
+        font-size: 28px;
         font-weight: bold;
         color: #ffffff;
         float: left;
     }
     
     .ai-insight-box {
-        background: #111111;
-        border-right: 5px solid #00ff00;
-        padding: 18px;
+        background: #0d1a0d;
+        border-right: 6px solid #00ff00;
+        padding: 20px;
         margin: 20px 0;
-        font-size: 16px; 
+        font-size: 17px; 
         color: #00ff00;
         line-height: 1.8;
-        border-radius: 8px;
+        border-radius: 10px;
     }
 
     .levels-grid {
@@ -119,7 +135,7 @@ st.markdown("""
     }
     
     .num {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: bold;
         color: #d4af37;
         font-family: 'Courier New', monospace;
@@ -129,26 +145,29 @@ st.markdown("""
         background: #d4af37 !important;
         color: #000000 !important;
         font-weight: 900 !important;
-        border-radius: 12px !important;
-        height: 70px !important;
+        border-radius: 15px !important;
+        height: 80px !important;
         width: 100% !important;
         border: none !important;
-        font-size: 24px !important;
-        box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3) !important;
+        font-size: 28px !important;
+        box-shadow: 0 6px 20px rgba(212, 175, 55, 0.4) !important;
+        cursor: pointer;
     }
     </style>
     
     <div class="nav-bar">
         <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
-        <p style="color:#888888; font-size:14px; letter-spacing: 2px;">المسح الشامل والتحليل الاحترافي لجميع أسهم البورصة المصرية</p>
+        <div class="status-sub">وضع المسح العميق | تحليل كامل للسوق المصري (60 ثانية)</div>
     </div>
 """, unsafe_allow_html=True)
 
 # ==========================================
-# 4. دوال المسح والبيانات (Scanner Logic)
+# 4. محرك المسح (The Scanning Engine)
 # ==========================================
 def fetch_all_egx_symbols():
-    """جلب قائمة الأسهم كاملة من TradingView"""
+    """
+    سحب قائمة الأسهم أوتوماتيكياً لضمان شمولية المسح
+    """
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         payload = {
@@ -156,27 +175,31 @@ def fetch_all_egx_symbols():
             "markets": ["egypt"],
             "columns": ["name"]
         }
-        res = requests.post(url, json=payload, timeout=20).json()
+        res = requests.post(url, json=payload, timeout=25).json()
         return [item['s'].split(':')[1] for item in res['data'] if ':' in item['s']]
     except Exception:
-        # قائمة احتياطية في حال فشل السيرفر
+        # قائمة الطوارئ إذا فشل السيرفر في الرد
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC"]
 
-def run_full_scan():
-    """تنفيذ المسح العميق الموزع على دقيقة كاملة"""
+def run_deep_scan_60s():
+    """
+    تنفيذ المسح وتوزيع الوقت لضمان استغراق دقيقة كاملة لمنع الحظر
+    """
     symbols = fetch_all_egx_symbols()
     results = []
     
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    # حساب وقت الانتظار لضمان استغراق دقيقة كاملة (60 ثانية) لتجنب الحظر
-    wait_time = 60 / len(symbols) if len(symbols) > 0 else 1
+    # توزيع الـ 60 ثانية بدقة على عدد الأسهم
+    total_duration = 60 
+    sleep_interval = total_duration / len(symbols) if len(symbols) > 0 else 1
     
     for i, sym in enumerate(symbols):
-        status_text.markdown(f"🔍 **فحص جاري:** {sym}... ({i+1} من {len(symbols)})")
+        status_text.markdown(f"📉 **جاري تحليل السهم:** {sym}... ({i+1} / {len(symbols)})")
         
         try:
+            # إعداد محلل TradingView
             handler = TA_Handler(
                 symbol=sym,
                 screener="egypt",
@@ -185,36 +208,45 @@ def run_full_scan():
                 timeout=15
             )
             analysis = handler.get_analysis()
-            ind = analysis.indicators
-            rec = analysis.summary["RECOMMENDATION"]
+            indicators = analysis.indicators
+            summary_rec = analysis.summary["RECOMMENDATION"]
             
-            # حساب سكور وهبة (Mustafa's Proprietary Logic)
+            # منطق سكور وهبة (Score Calculation)
             score = 0
-            if "STRONG_BUY" in rec: score += 5
-            elif "BUY" in rec: score += 3
+            if "STRONG_BUY" in summary_rec: 
+                score += 5
+            elif "BUY" in summary_rec: 
+                score += 3
             
-            rsi_val = ind.get("RSI")
-            if rsi_val and 50 <= rsi_val <= 70: score += 3
-            if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
+            rsi = indicators.get("RSI")
+            if rsi and 45 <= rsi <= 65: 
+                score += 3
+                
+            close_price = indicators.get("close")
+            pivot_middle = indicators.get("Pivot.M.Classic.Middle")
+            if close_price and pivot_middle and close_price > pivot_middle:
+                score += 2
 
-            # استدعاء الـ AI للفرص الواعدة فقط
-            ai_insight = ""
-            if score >= 3:
-                ai_insight = get_ai_insight(sym, rec, rsi_val, ind.get("close"))
-                time.sleep(random.uniform(0.6, 1.2)) # حماية إضافية للـ API
+            # جلب رؤية الذكاء الاصطناعي للفرص المتميزة
+            ai_commentary = ""
+            if score >= 4:
+                ai_commentary = get_ai_insight(sym, summary_rec, rsi, close_price)
+                # فاص حماية للـ API
+                time.sleep(1)
 
+            # تجميع البيانات
             results.append({
                 "symbol": sym,
-                "price": ind.get("close"),
+                "price": close_price,
                 "score": score,
-                "rec": rec,
-                "ai": ai_insight, 
-                "s1": ind.get("Pivot.M.Classic.S1"), 
-                "r1": ind.get("Pivot.M.Classic.R1")
+                "rec": summary_rec,
+                "ai": ai_commentary, 
+                "s1": indicators.get("Pivot.M.Classic.S1"), 
+                "r1": indicators.get("Pivot.M.Classic.R1")
             })
             
-            # التوقف لضمان المسح الهادئ (دقيقة كاملة)
-            time.sleep(wait_time)
+            # الالتزام بجدول الـ 60 ثانية
+            time.sleep(sleep_interval)
             
         except Exception:
             continue
@@ -225,23 +257,23 @@ def run_full_scan():
     return results
 
 # ==========================================
-# 5. منطقة التشغيل والعرض (UI)
+# 5. منطقة التحكم والعرض (UI Logic)
 # ==========================================
-if st.button("بدء المسح العميق للبورصة المصرية (دقيقة كاملة)"):
-    with st.spinner("جاري تحليل البيانات طوبة طوبة..."):
-        scan_data = run_full_scan()
+if st.button("تفعيل المسح العميق (60 ثانية)"):
+    with st.spinner("جاري بناء التقرير طوبة طوبة..."):
+        all_data = run_deep_scan_60s()
         
-        if scan_data:
-            # ترتيب النتائج حسب السكور (الأفضل أولاً)
-            sorted_results = sorted(scan_data, key=lambda x: x['score'], reverse=True)
+        if all_data:
+            # ترتيب النتائج من الأقوى للأضعف
+            final_list = sorted(all_data, key=lambda x: x['score'], reverse=True)
             
-            for stock in sorted_results:
+            for stock in final_list:
                 if stock['score'] >= 1:
-                    # بناء عرض السهم بتنسيق HTML سليم (حل مشكلة صورة 1000398575.jpg)
-                    html_card = f"""
+                    # بناء الكارت بصيغة HTML كاملة
+                    card_markup = f"""
                     <div class="stock-card">
                         <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
-                        <div style="color:#aaaaaa; margin-top:5px;">السكور الفني: {stock['score']} | التوصية: {stock['rec']}</div>
+                        <div style="color:#888888; margin-top:10px;">سكور وهبة: {stock['score']} | التوصية الفنية: {stock['rec']}</div>
                         {f'<div class="ai-insight-box"><b>🎯 Wahba AI:</b> {stock["ai"]}</div>' if stock['ai'] else ''}
                         <div class="levels-grid">
                             <div>الدعم (S1): <span class="num">{stock['s1']:.2f}</span></div>
@@ -249,8 +281,13 @@ if st.button("بدء المسح العميق للبورصة المصرية (دق
                         </div>
                     </div>
                     """
-                    st.markdown(html_card, unsafe_allow_html=True)
+                    st.markdown(card_markup, unsafe_allow_html=True)
         else:
-            st.error("فشل في الوصول لمزود البيانات حالياً. يرجى الانتظار دقيقة والمحاولة مجدداً.")
+            st.error("فشل في استلام البيانات. يرجى مراجعة الاتصال أو الـ API Key.")
 
-st.markdown('<div style="text-align:center; padding:60px; color:#444444; font-size:12px;">WAHBA INTELLIGENCE © 2026 | تطوير مصطفى وهبة</div>', unsafe_allow_html=True)
+# تذييل الصفحة
+st.markdown("""
+    <div style="text-align:center; padding:80px; color:#333333; font-size:13px; border-top:1px solid #111; margin-top:50px;">
+        WAHBA INTELLIGENCE SYSTEM © 2026<br>تم التطوير بواسطة مصطفى وهبة - جميع الحقوق محفوظة
+    </div>
+""", unsafe_allow_html=True)
