@@ -4,40 +4,30 @@ import pandas as pd
 import requests
 from datetime import datetime
 import pytz
-import google.generativeai as genai  # طوبة الذكاء الاصطناعي الجديدة[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)
+import google.generativeai as genai # طوبة 1: إضافة مكتبة الـ AI[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
 
 # --- 1. إعدادات الوقت (القاهرة أوتوماتيك) ---
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-# --- طوبة إعدادات الـ AI (Gemini) ---[span_4](start_span)[span_4](end_span)[span_5](start_span)[span_5](end_span)
+# --- طوبة 2: إعداد Gemini بمفتاحك الخاص ---[span_3](start_span)[span_3](end_span)[span_4](start_span)[span_4](end_span)
 # ضع مفتاح الـ API الخاص بك هنا
-GENAI_API_KEY = "ضـع_مفتاحك_هنا" 
-genai.configure(api_key=GENAI_API_KEY)
+genai.configure(api_key="ضـع_مفتاحك_هنا") 
 model = genai.GenerativeModel('gemini-pro')
 
-def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
-    """وظيفة الذكاء الاصطناعي لحساب الأهداف ووقف الخسارة[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span)"""
-    prompt = f"""
-    أنت محلل فني خبير في البورصة المصرية. حلل سهم {symbol}:
-    - السعر الحالي: {price}
-    - التوصية الفنية: {recommendation}
-    - مؤشر RSI: {rsi}
-    - الدعم الأول (S1): {s1}
-    - المقاومة الأولى (R1): {r1}
-    المطلوب رد احترافي في سطر واحد يتضمن:
-    (رؤية السهم - هدف البيع الأول - نقطة وقف الخسارة - وتنبيه أحمر إذا كان السهم قرب منطقة خطر).
-    """
+def get_ai_insight(symbol, rec, rsi, price, s1, r1):
+    """وظيفة الذكاء الاصطناعي لحساب الأهداف ووقف الخسارة"""
+    prompt = f"حلل سهم {symbol}: السعر {price}، التوصية {rec}، RSI {rsi}، دعم {s1}، مقاومة {r1}. أعطني سطر واحد (الرؤية - الهدف - وقف الخسارة)."
     try:
         response = model.generate_content(prompt)
         return response.text
-    except Exception:
-        return "جاري تقدير الأهداف والنقاط الاستراتيجية..."
+    except:
+        return "جاري تحليل الاستراتيجية..."
 
 st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 2. التصميم المؤسسي (كامل كما أرسلته أنت) ---
+# --- 2. التصميم المؤسسي (كما أرسلته حرفياً) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -68,11 +58,10 @@ st.markdown("""
     .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
     .price-val { font-size: 24px; font-weight: bold; color: #fff; }
     
-    /* صندوق الـ AI المضاف */
+    /* طوبة: تصميم صندوق الـ AI داخل الكارت */
     .ai-insight-box {
         background: #111; border-right: 4px solid #d4af37;
-        padding: 15px; margin: 20px 0; font-size: 15px; 
-        color: #e0e0e0; line-height: 1.6;
+        padding: 12px; margin: 15px 0; font-size: 14px; color: #ddd;
     }
 
     /* مستويات الدعم والمقاومة */
@@ -106,7 +95,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 3. محرك البيانات (كامل مع إضافة الـ AI) ---[span_8](start_span)[span_8](end_span)[span_9](start_span)[span_9](end_span)
+# --- 3. محرك البيانات (أصل الكود مع إضافات الـ AI) ---[span_5](start_span)[span_5](end_span)[span_6](start_span)[span_6](end_span)
 
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
@@ -123,6 +112,7 @@ def run_strategic_scan(date_key):
     results = []
     p_bar = st.progress(0)
     
+    # سنقوم بفحص قائمة الأسهم كاملة ولكن بفاصل زمني بسيط لتجنب توقف الـ AI[span_7](start_span)[span_7](end_span)[span_8](start_span)[span_8](end_span)
     for i, sym in enumerate(symbols):
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=10)
@@ -130,36 +120,40 @@ def run_strategic_scan(date_key):
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # --- منطق السكور الخاص بك ---
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             
+            # فلتر RSI للقوة النسبية
             rsi_val = ind.get("RSI")
             if rsi_val and 50 <= rsi_val <= 70: score += 3
+            
+            # فلتر المتوسطات المتحركة
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
 
-            # --- طوبة الـ AI: جلب الأهداف والاستراتيجية[span_10](start_span)[span_10](end_span)[span_11](start_span)[span_11](end_span) ---
+            # --- طوبة 3: دمج رؤية الـ AI داخل المحرك ---[span_9](start_span)[span_9](end_span)[span_10](start_span)[span_10](end_span)
             s1 = ind.get("Pivot.M.Classic.S1")
             r1 = ind.get("Pivot.M.Classic.R1")
             price = ind.get("close")
-            ai_insight = get_ai_insight(sym, rec, rsi_val, price, s1, r1)
+            ai_text = get_ai_insight(sym, rec, rsi_val, price, s1, r1)
 
             results.append({
                 "symbol": sym,
                 "price": price,
                 "rec": rec,
-                "rsi": rsi_val,
                 "score": score,
-                "ai": ai_insight,
+                "rsi": rsi_val,
                 "s1": s1,
-                "r1": r1
+                "r1": r1,
+                "ai": ai_text
             })
-        except: continue
+            p_bar.progress((i + 1) / len(symbols))
+        except: 
+            continue
     return results
 
-# --- 4. عرض النتائج (التنفيذ) ---
-if st.button("بدء المسح الاستراتيجي بالذكاء الاصطناعي"):
+# --- 4. العرض (طوبة العرض النهائية) ---
+if st.button("تشغيل المسح الاستراتيجي"):
     data = run_strategic_scan(today_key)
     # ترتيب حسب السكور الخاص بك
     data = sorted(data, key=lambda x: x['score'], reverse=True)
@@ -168,7 +162,7 @@ if st.button("بدء المسح الاستراتيجي بالذكاء الاصط
         st.markdown(f"""
             <div class="stock-card">
                 <div class="symbol-name">{stock['symbol']} <span class="price-val">| {stock['price']:.2f} EGP</span></div>
-                <div style="color:#888;">التقييم الفني: {stock['rec']} | RSI: {stock['rsi']:.1f} | سكور: {stock['score']}</div>
+                <div style="color:#888;">التقييم الفني: {stock['rec']} | سكور: {stock['score']}</div>
                 
                 <div class="ai-insight-box">
                     <b style="color:#d4af37;">🎯 استراتيجية Wahba AI:</b><br>
@@ -176,8 +170,8 @@ if st.button("بدء المسح الاستراتيجي بالذكاء الاصط
                 </div>
 
                 <div class="levels-grid">
-                    <div class="level-item"><span class="label">دعم (وقف خسارة)</span><span class="num">{stock['s1']:.2f}</span></div>
-                    <div class="level-item"><span class="label">مقاومة (هدف أول)</span><span class="num">{stock['r1']:.2f}</span></div>
+                    <div class="level-item"><span class="label">دعم S1</span><span class="num">{stock['s1']:.2f}</span></div>
+                    <div class="level-item"><span class="label">مقاومة R1</span><span class="num">{stock['r1']:.2f}</span></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
