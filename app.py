@@ -4,84 +4,70 @@ import pandas as pd
 import requests
 import google.generativeai as genai
 import time
-from datetime import datetime
 
 # ==========================================
-# 1. نظام الـ AI الهجين (أهداف دقيقة + سرعة)
+# 1. إعدادات الـ AI
 # ==========================================
 API_KEY = "YOUR_API_KEY_HERE" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-def get_pro_targets(stock):
-    """تحديد أهداف SMC دقيقة جداً"""
-    # حسابات رياضية سريعة كـ (Back-up) عشان لو المنصة هنجت
-    t1 = stock['r1']
-    t2 = stock['r1'] + (stock['r1'] - stock['s1']) * 0.5
-    sl = stock['s1'] * 0.98 # وقف خسارة تحت الدعم بـ 2%
-    
-    prompt = f"""
-    بصفتك Senior Trader، سهم {stock['sym']} سعره {stock['price']}.
-    المقاومة {stock['r1']}، الدعم {stock['s1']}، RSI {stock['rsi']:.1f}.
-    حدد بدقة: Entry, T1, T2, SL. 
-    اجعل الرد في 4 سطر فقط.
-    """
+def get_ai_analysis(stock):
+    prompt = f"حلل سهم {stock['sym']} سعره {stock['price']} EGP، الأهداف والوقف بناءً على المقاومة {stock['r1']} والدعم {stock['s1']} باختصار شديد."
     try:
-        # تقليل الـ Tokens لزيادة السرعة ومنع التهنيج
-        response = model.generate_content(prompt, generation_config={"max_output_tokens": 80})
+        # تقليل الـ tokens جداً عشان السرعة
+        response = model.generate_content(prompt, generation_config={"max_output_tokens": 50})
         return response.text.strip()
     except:
-        return f"🎯 T1: {t1:.2f} | 🎯 T2: {t2:.2f} | 🛑 SL: {sl:.2f} (Calculated Mode)"
+        return f"🎯 هدف: {stock['r1']} | 🛑 وقف: {stock['s1']}"
 
 # ==========================================
-# 2. واجهة مستخدم Wall Street (Ultra-Scannable)
+# 2. تصميم الواجهة (Terminal Style)
 # ==========================================
-st.set_page_config(page_title="Wahba Pro Scanner", layout="wide")
+st.set_page_config(page_title="Wahba Anti-Lag Scanner", layout="wide")
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@700&display=swap');
-    html, body, [data-testid="stAppViewContainer"] {
-        background-color: #050505; color: #fff; direction: rtl;
-    }
-    .stProgress > div > div > div > div { background-image: linear-gradient(to right, #d4af37, #f1c40f); }
-    .terminal-card {
-        background: #0a0a0a; border: 1px solid #1a1a1a; padding: 15px;
-        margin-bottom: 10px; border-right: 5px solid #d4af37;
-    }
-    .ai-flash { color: #00ff41; font-family: 'Roboto Mono', monospace; font-size: 14px; margin-top: 5px; }
+    html, body, [data-testid="stAppViewContainer"] { background-color: #000; color: #0f0; direction: rtl; }
+    .stProgress > div > div > div > div { background-color: #d4af37; }
+    .card { border: 1px solid #222; padding: 15px; margin-bottom: 10px; border-right: 5px solid #d4af37; background: #050505; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🏹 WAHBA PRO | رادار الأهداف الذكي")
+st.title("📟 رادار وهبة (نسخة الحماية من التهنيج)")
 
 # ==========================================
-# 3. المحرك (Scanner Engine)
+# 3. محرك المسح المجدول (Scheduled Scanner)
 # ==========================================
-if st.button("🚀 تشغيل نظام المسح الشامل (EGX 283)"):
-    # 1. جلب كل الأسهم
+if st.button("🚀 ابدأ المسح المجدول"):
+    # جلب الأسهم
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         res = requests.post(url, json={"markets": ["egypt"], "columns": ["name"]}, timeout=10)
         all_tickers = [item['s'].split(':')[1] for item in res.json()['data']]
     except:
-        all_tickers = ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"] # Backup list
+        all_tickers = ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
 
     qualified = []
     
-    # المرحلة الأولى: المسح الفني (Progress Bar 1)
-    st.subheader("🔍 المرحلة 1: تصفية السيولة والاتجاه")
+    # --- المرحلة 1: مسح فني بنظام المجموعات (Anti-Block) ---
+    st.subheader("🔍 جاري الفحص الفني (نظام المجموعات لعدم التهنيج)")
     p1 = st.progress(0)
     status = st.empty()
     
+    batch_size = 20  # كل 20 سهم هياخد راحة
     for i, sym in enumerate(all_tickers):
-        status.text(f"فحص سيولة: {sym} ({i+1}/{len(all_tickers)})")
+        if i % batch_size == 0 and i > 0:
+            status.warning(f"⏳ راحة قصيرة لتجنب حظر السيرفر... (تم فحص {i} سهم)")
+            time.sleep(2) # راحة ثانيتين كل 20 طلب
+            
+        status.text(f"📡 فحص إشارات: {sym} ({i+1}/{len(all_tickers)})")
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=2)
             analysis = handler.get_analysis()
             ind = analysis.indicators
             
-            # فلتر النخبة (إغلاق يومي صاعد + عزم)
-            if (ind.get("close") > ind.get("SMA20")) and (ind.get("RSI") > 52) and ("BUY" in analysis.summary["RECOMMENDATION"]):
+            # الفلتر بتاعك (وول ستريت)
+            if (ind.get("close") > ind.get("SMA20")) and (ind.get("RSI") > 52):
                 qualified.append({
                     "sym": sym, "price": ind.get("close"), "rsi": ind.get("RSI"),
                     "s1": ind.get("Pivot.M.Classic.S1"), "r1": ind.get("Pivot.M.Classic.R1")
@@ -89,30 +75,26 @@ if st.button("🚀 تشغيل نظام المسح الشامل (EGX 283)"):
         except: continue
         p1.progress((i + 1) / len(all_tickers))
 
-    # المرحلة الثانية: تحليل الأهداف (Progress Bar 2 + Live Display)
+    # --- المرحلة 2: الـ AI (تحليل فوري للأهداف) ---
     if qualified:
-        st.subheader(f"🎯 المرحلة 2: استخراج الأهداف لـ {len(qualified)} فرصة")
+        st.subheader(f"🎯 تحليل الأهداف لـ {len(qualified)} فرصة")
         p2 = st.progress(0)
         
         for i, s in enumerate(qualified):
-            status.markdown(f"🧠 AI يحلل أهداف: **{s['sym']}**")
+            status.markdown(f"🧠 استخراج أهداف: **{s['sym']}**")
+            report = get_ai_analysis(s)
             
-            report = get_pro_targets(s)
-            
-            # عرض الكارت فوراً عشان ما تزهقش من الانتظار
+            # عرض الكارت فوراً
             st.markdown(f"""
-            <div class="terminal-card">
-                <div style="display:flex; justify-content:space-between; font-weight:bold;">
-                    <span style="color:#d4af37; font-size:20px;">$ {s['sym']}</span>
-                    <span>{s['price']:.2f} EGP</span>
-                </div>
-                <div class="ai-flash">{report.replace('\n', '<br>')}</div>
+            <div class="card">
+                <b style="color:#d4af37;">$ {s['sym']} | {s['price']:.2f} EGP</b><br>
+                <span style="color:#fff; font-size:14px;">{report}</span>
             </div>
             """, unsafe_allow_html=True)
             
             p2.progress((i + 1) / len(qualified))
-            time.sleep(0.5) # فاصل بسيط لمنع تهنيج الـ API
+            time.sleep(0.5) # فاصل بسيط للـ AI برضه
             
-        status.success(f"✅ اكتمل المسح. تم إيجاد {len(qualified)} فرصة جاهزة.")
+        status.success("✅ تم المسح بنجاح دون أي تهنيج!")
     else:
-        status.warning("لا توجد فرص تحقق شروط 'وول ستريت' حالياً.")
+        status.warning("لم نجد فرصاً تحقق الشروط حالياً.")
