@@ -12,18 +12,18 @@ egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-# --- 2. إعداد الـ AI (كلاود جوجل Gemini) ---
-# حط هنا الـ API Key الجديد بتاعك
-API_KEY = "YOUR_NEW_API_KEY_HERE" 
+# --- 2. إعداد الـ AI (Gemini) ---
+# تأكد من وضع المفتاح الجديد هنا
+API_KEY = "ضع_مفتاحك_هنا" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
-    """وظيفة الـ AI مع نظام انتظار ذكي لتجنب الحظر"""
+    """وظيفة الـ AI مع إدارة ذكية لتجنب الحظر"""
     prompt = f"""
     أنت محلل فني خبير في البورصة المصرية. حلل سهم {symbol}:
-    السعر الحالي: {price}، التوصية الفنية: {recommendation}، مؤشر RSI: {rsi}
-    المطلوب رد احترافي في سطر واحد يتضمن: (رؤية السهم - هدف البيع الأول - نقطة وقف الخسارة).
+    السعر {price}، التوصية {recommendation}، RSI {rsi}.
+    أعطني سطر واحد فقط فيه: (الرؤية الفنية - الهدف القريب - وقف الخسارة).
     """
     for attempt in range(2):
         try:
@@ -31,13 +31,13 @@ def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
             if response and response.text:
                 return response.text.strip()
         except Exception:
-            time.sleep(1) 
+            time.sleep(1)
             continue
     return None
 
 st.set_page_config(page_title="Wahba Intelligence - Full Scanner", layout="wide")
 
-# --- 3. التصميم المؤسسي الكامل (CSS) - بدون حذف حرف ---
+# --- 3. التصميم الكامل (CSS) - النسخة الاحترافية ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -87,13 +87,13 @@ st.markdown("""
     
     <div class="nav-bar">
         <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
-        <p style="color:#666; font-size:12px; letter-spacing: 3px;">المسح الشامل لجميع أسهم البورصة المصرية</p>
+        <p style="color:#666; font-size:12px; letter-spacing: 3px;">المسح الشامل والتحليل الذكي لجميع أسهم EGX</p>
     </div>
 """, unsafe_allow_html=True)
 
-# --- 4. محرك المسح الشامل (Scanner Engine) ---
+# --- 4. محرك المسح (Full Market Scanner) ---
 def fetch_all_egx_symbols():
-    """جلب كافة الأسهم المسجلة في البورصة المصرية أوتوماتيكياً"""
+    """سحب كافة الأسهم المدرجة في مصر أوتوماتيكياً"""
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         payload = {
@@ -102,13 +102,12 @@ def fetch_all_egx_symbols():
             "columns": ["name"]
         }
         res = requests.post(url, json=payload, timeout=15).json()
-        all_symbols = [item['s'].split(':')[1] for item in res['data'] if ':' in item['s']]
-        return sorted(list(set(all_symbols)))
+        return [item['s'].split(':')[1] for item in res['data'] if ':' in item['s']]
     except:
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK"]
 
-def run_market_scan():
-    """مسح السوق بالكامل وحساب سكور وهبة"""
+def run_full_scan():
+    """تحليل كل سهم وحساب السكور الفني"""
     symbols = fetch_all_egx_symbols()
     results = []
     p_bar = st.progress(0)
@@ -120,7 +119,7 @@ def run_market_scan():
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # --- سكور وهبة (Logic الكامل) ---
+            # --- سكور وهبة (Mustafa's Score) ---
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
@@ -129,11 +128,11 @@ def run_market_scan():
             if rsi_val and 50 <= rsi_val <= 70: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
 
-            # استدعاء الـ AI للأسهم القوية فقط لتوفير الـ API
+            # تشغيل الـ AI فقط للأسهم ذات السكور العالي
             ai_text = ""
             if score >= 3:
-                ai_text = get_ai_insight(sym, rec, rsi_val, ind.get("close"), ind.get("Pivot.M.Classic.S1"), ind.get("Pivot.M.Classic.R1"))
-                time.sleep(0.5) # فاصل زمني لحماية الـ API
+                ai_text = get_ai_insight(sym, rec, rsi_val, ind.get("close"), ind.get("Pivot.M.Classic.S1"), ind.get("Pivot.get('Pivot.M.Classic.R1')"))
+                time.sleep(0.5)
 
             results.append({
                 "symbol": sym, "price": ind.get("close"), "score": score,
@@ -144,26 +143,28 @@ def run_market_scan():
         p_bar.progress((i + 1) / len(symbols))
     return results
 
-# --- 5. العرض النهائي ---
-if st.button("بدء المسح الشامل للبورصة"):
-    with st.spinner("جاري صيد الفرص وتحليل السوق..."):
-        all_data = run_market_scan()
-        if all_data:
-            # الترتيب حسب السكور الأعلى (الزبدة أولاً)
-            for stock in sorted(all_data, key=lambda x: x['score'], reverse=True):
+# --- 5. التشغيل والعرض ---
+if st.button("بدء المسح الشامل للبورصة المصرية"):
+    with st.spinner("جاري صيد الفرص في كامل السوق..."):
+        data = run_full_scan()
+        if data:
+            # الترتيب حسب السكور الأعلى
+            for stock in sorted(data, key=lambda x: x['score'], reverse=True):
                 if stock['score'] >= 1:
-                    st.markdown(f"""
-                        <div class="stock-card">
-                            <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
-                            <div style="color:#888;">السكور الفني: {stock['score']} | الحالة: {stock['rec']}</div>
-                            {f'<div class="ai-insight-box"><b>🎯 رؤية Wahba AI:</b><br>{stock["ai"]}</div>' if stock['ai'] else ''}
-                            <div class="levels-grid">
-                                <div>دعم (S1): <span class="num">{stock['s1']:.2f}</span></div>
-                                <div>مقاومة (R1): <span class="num">{stock['r1']:.2f}</span></div>
-                            </div>
+                    # حل مشكلة الصورة 1000398575.jpg بتنسيق HTML سليم
+                    card_html = f"""
+                    <div class="stock-card">
+                        <div class="symbol-name">{stock['symbol']} <span class="price-val">{stock['price']:.2f} EGP</span></div>
+                        <div style="color:#888;">السكور: {stock['score']} | الحالة: {stock['rec']}</div>
+                        {f'<div class="ai-insight-box"><b>🎯 Wahba AI:</b> {stock["ai"]}</div>' if stock['ai'] else ''}
+                        <div class="levels-grid">
+                            <div>S1: <span class="num">{stock['s1']:.2f}</span></div>
+                            <div>R1: <span class="num">{stock['r1']:.2f}</span></div>
                         </div>
-                    """, unsafe_allow_html=True)
+                    </div>
+                    """
+                    st.markdown(card_html, unsafe_allow_html=True)
         else:
-            st.error("لم نتمكن من جلب البيانات، تأكد من الاتصال بالمفتاح الجديد.")
+            st.error("فشل في جلب البيانات، تأكد من المفتاح الجديد.")
 
 st.markdown('<div class="footer-box">WAHBA INTELLIGENCE © 2026</div>', unsafe_allow_html=True)
