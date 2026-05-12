@@ -4,15 +4,40 @@ import pandas as pd
 import requests
 from datetime import datetime
 import pytz
+import google.generativeai as genai  # طوبة الذكاء الاصطناعي الجديدة[span_2](start_span)[span_2](end_span)[span_3](start_span)[span_3](end_span)
 
 # --- 1. إعدادات الوقت (القاهرة أوتوماتيك) ---
 egypt_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
+# --- طوبة إعدادات الـ AI (Gemini) ---[span_4](start_span)[span_4](end_span)[span_5](start_span)[span_5](end_span)
+# ضع مفتاح الـ API الخاص بك هنا
+GENAI_API_KEY = "ضـع_مفتاحك_هنا" 
+genai.configure(api_key=GENAI_API_KEY)
+model = genai.GenerativeModel('gemini-pro')
+
+def get_ai_insight(symbol, recommendation, rsi, price, s1, r1):
+    """وظيفة الذكاء الاصطناعي لحساب الأهداف ووقف الخسارة[span_6](start_span)[span_6](end_span)[span_7](start_span)[span_7](end_span)"""
+    prompt = f"""
+    أنت محلل فني خبير في البورصة المصرية. حلل سهم {symbol}:
+    - السعر الحالي: {price}
+    - التوصية الفنية: {recommendation}
+    - مؤشر RSI: {rsi}
+    - الدعم الأول (S1): {s1}
+    - المقاومة الأولى (R1): {r1}
+    المطلوب رد احترافي في سطر واحد يتضمن:
+    (رؤية السهم - هدف البيع الأول - نقطة وقف الخسارة - وتنبيه أحمر إذا كان السهم قرب منطقة خطر).
+    """
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception:
+        return "جاري تقدير الأهداف والنقاط الاستراتيجية..."
+
 st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 2. التصميم المؤسسي ---
+# --- 2. التصميم المؤسسي (كامل كما أرسلته أنت) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -43,6 +68,13 @@ st.markdown("""
     .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
     .price-val { font-size: 24px; font-weight: bold; color: #fff; }
     
+    /* صندوق الـ AI المضاف */
+    .ai-insight-box {
+        background: #111; border-right: 4px solid #d4af37;
+        padding: 15px; margin: 20px 0; font-size: 15px; 
+        color: #e0e0e0; line-height: 1.6;
+    }
+
     /* مستويات الدعم والمقاومة */
     .levels-grid {
         display: flex; justify-content: space-around; margin-top: 20px;
@@ -74,7 +106,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# --- 3. محرك البيانات ---
+# --- 3. محرك البيانات (كامل مع إضافة الـ AI) ---[span_8](start_span)[span_8](end_span)[span_9](start_span)[span_9](end_span)
 
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
@@ -98,88 +130,56 @@ def run_strategic_scan(date_key):
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
+            # --- منطق السكور الخاص بك ---
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             
-            # فلتر RSI للقوة النسبية
             rsi_val = ind.get("RSI")
             if rsi_val and 50 <= rsi_val <= 70: score += 3
-            
-            # فلتر المتوسطات المتحركة
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
 
+            # --- طوبة الـ AI: جلب الأهداف والاستراتيجية[span_10](start_span)[span_10](end_span)[span_11](start_span)[span_11](end_span) ---
+            s1 = ind.get("Pivot.M.Classic.S1")
+            r1 = ind.get("Pivot.M.Classic.R1")
+            price = ind.get("close")
+            ai_insight = get_ai_insight(sym, rec, rsi_val, price, s1, r1)
+
             results.append({
-                "Symbol": sym, 
-                "Price": round(ind.get("close"), 2), 
-                "Score": score,
-                "S1": round(ind.get("Pivot.M.Classic.S1"), 2),
-                "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
-                "R1": round(ind.get("Pivot.M.Classic.R1"), 2),
-                "Signal": rec
+                "symbol": sym,
+                "price": price,
+                "rec": rec,
+                "rsi": rsi_val,
+                "score": score,
+                "ai": ai_insight,
+                "s1": s1,
+                "r1": r1
             })
         except: continue
-        p_bar.progress((i + 1) / len(symbols))
+    return results
+
+# --- 4. عرض النتائج (التنفيذ) ---
+if st.button("بدء المسح الاستراتيجي بالذكاء الاصطناعي"):
+    data = run_strategic_scan(today_key)
+    # ترتيب حسب السكور الخاص بك
+    data = sorted(data, key=lambda x: x['score'], reverse=True)
     
-    p_bar.empty()
-    return pd.DataFrame(results)
-
-# --- 4. واجهة التحكم والعرض ---
-
-st.write(f"🕒 توقيت التقرير: {now_egypt.strftime('%H:%M')} | {today_key}")
-
-if st.button('🚀 إصدار التقرير الذهبي للبورصة المصرية'):
-    st.session_state.final_report = run_strategic_scan(today_key)
-
-if 'final_report' not in st.session_state:
-    st.session_state.final_report = None
-
-data = st.session_state.final_report
-
-if data is not None and not data.empty:
-    
-    # تصنيف 1: نخبة النخبة
-    t1 = data[data['Score'] >= 8].sort_values(by="Score", ascending=False)
-    if not t1.empty:
-        st.markdown('<div class="section-header">🏆 نخبة فرص الصعود (أعلى دقة)</div>', unsafe_allow_html=True)
-        for _, row in t1.iterrows():
-            st.markdown(f"""
+    for stock in data:
+        st.markdown(f"""
             <div class="stock-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
-                    <span class="symbol-name">{row['Symbol']}</span>
-                    <span style="color:#d4af37; font-weight:bold; background: #1a1a1a; padding: 5px 15px; border-radius: 20px;">{row['Signal']}</span>
+                <div class="symbol-name">{stock['symbol']} <span class="price-val">| {stock['price']:.2f} EGP</span></div>
+                <div style="color:#888;">التقييم الفني: {stock['rec']} | RSI: {stock['rsi']:.1f} | سكور: {stock['score']}</div>
+                
+                <div class="ai-insight-box">
+                    <b style="color:#d4af37;">🎯 استراتيجية Wahba AI:</b><br>
+                    {stock['ai']}
                 </div>
-                <div class="price-val">{row['Price']} <small style="font-size:12px; color:#666;">ج.م</small></div>
+
                 <div class="levels-grid">
-                    <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{row['S1']}</span></div>
-                    <div class="level-item"><span class="label">PIVOT (ارتكاز)</span><span class="num">{row['P']}</span></div>
-                    <div class="level-item"><span class="label">R1 (مقاومة)</span><span class="num">{row['R1']}</span></div>
+                    <div class="level-item"><span class="label">دعم (وقف خسارة)</span><span class="num">{stock['s1']:.2f}</span></div>
+                    <div class="level-item"><span class="label">مقاومة (هدف أول)</span><span class="num">{stock['r1']:.2f}</span></div>
                 </div>
             </div>
-            """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    # تصنيف 2: الأسهم الواعدة
-    t2 = data[(data['Score'] >= 5) & (data['Score'] < 8)]
-    if not t2.empty:
-        st.markdown('<div class="section-header">💎 أسهم إيجابية واعدة</div>', unsafe_allow_html=True)
-        cols = st.columns(2)
-        for idx, row in t2.reset_index().iterrows():
-            with cols[idx % 2]:
-                st.markdown(f"""
-                <div class="stock-card" style="border-top: 1px solid #d4af37; padding: 15px;">
-                    <div style="font-size:22px; font-weight:900; color:#fff;">{row['Symbol']}</div>
-                    <div style="color:#d4af37; font-size:20px; font-weight:bold;">{row['Price']} ج.م</div>
-                    <div style="font-size:13px; color:#777; margin-top:10px; direction: ltr;">
-                        R1: {row['R1']} | Pivot: {row['P']} | S1: {row['S1']}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-
-# --- 5. التذييل الفاخر ---
-st.markdown("""
-    <div class="footer-box">
-        <p style="font-weight:bold; color:#d4af37; font-size: 16px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
-        <p>تم استخراج البيانات بناءً على التحليل الفني لـ TradingView. القرار الاستثماري مسؤوليتك الشخصية.</p>
-        <p>© 2026 جميع الحقوق محفوظة</p>
-    </div>
-""", unsafe_allow_html=True)
+st.markdown('<div class="footer-box">WAHBA INTELLIGENCE © 2026</div>', unsafe_allow_html=True)
