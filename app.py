@@ -6,85 +6,86 @@ import google.generativeai as genai
 import time
 
 # ==========================================
-# 1. إعدادات الـ AI (Gemini 1.5 Flash)
+# 1. إعدادات الـ AI
 # ==========================================
 API_KEY = "YOUR_API_KEY_HERE" 
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-def get_pro_ai_analysis(stock):
+def get_pro_analysis(stock):
     prompt = f"""
-    بصفتك Swing Trader محترف، حلل سهم {stock['sym']}:
-    السعر الحالي: {stock['price']}
-    المقاومات: R1={stock['r1']}, R2={stock['r2']}
-    الدعوم: S1={stock['s1']}, S2={stock['s2']}
-    المطلوب: جملة واحدة تحدد أفضل نقطة جني أرباح ووقف خسارة نهائي.
+    بصفتك Swing Trader، حلل سهم {stock['sym']}:
+    السعر: {stock['price']} | الفوليوم: {stock['vol']} | مؤشر OBV: {stock['obv']}
+    المقاومات: {stock['r1']}, {stock['r2']} | الدعوم: {stock['s1']}, {stock['s2']}
+    المطلوب: هل السيولة (OBV) تدعم اختراق المقاومة؟ جاوب باختصار شديد جداً.
     """
     try:
-        response = model.generate_content(prompt, generation_config={"max_output_tokens": 70})
+        response = model.generate_content(prompt, generation_config={"max_output_tokens": 80})
         return response.text.strip()
     except:
-        return f"🎯 الهدف الأساسي: {stock['r1']} | 🛑 حماية الأرباح: {stock['s1']}"
+        return f"🎯 الهدف: {stock['r1']} | 🛑 الدعم: {stock['s1']}"
 
 # ==========================================
-# 2. تصميم الواجهة الاحترافية
+# 2. تصميم الواجهة (The Wahba Terminal)
 # ==========================================
-st.set_page_config(page_title="Wahba S&R Scanner", layout="wide")
+st.set_page_config(page_title="Wahba Pro Scanner", layout="wide")
 st.markdown("""
 <style>
     html, body, [data-testid="stAppViewContainer"] { background-color: #050505; color: #fff; direction: rtl; }
-    .stProgress > div > div > div > div { background: linear-gradient(to right, #d4af37, #ffd700); }
-    .stock-card { border: 1px solid #222; padding: 20px; margin-bottom: 15px; border-right: 5px solid #d4af37; background: #0c0c0c; border-radius: 5px; }
-    .levels { display: flex; justify-content: space-around; margin-top: 10px; font-size: 13px; font-family: monospace; }
-    .res { color: #ff4b4b; } /* المقاومة باللون الأحمر */
-    .sup { color: #00ff41; } /* الدعم باللون الأخضر */
+    .stProgress > div > div > div > div { background: linear-gradient(to right, #00ff41, #008f11); }
+    .stock-card { border: 1px solid #1a1a1a; padding: 20px; margin-bottom: 15px; border-right: 5px solid #d4af37; background: #0c0c0c; border-radius: 8px; }
+    .level-tag { background: #111; padding: 5px 10px; border-radius: 4px; font-family: monospace; font-size: 12px; }
+    .obv-signal { color: #00ff41; font-weight: bold; font-family: 'Courier New', monospace; }
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 رادار الدعوم والمقاومات | صفوة الأسهم")
+st.title("🛡️ سكانر وهبة المتكامل | فوليوم + مستويات + OBV")
 
 # ==========================================
-# 3. محرك المسح بنظام المستويات (S&R Engine)
+# 3. المحرك الذكي (The Engine)
 # ==========================================
-if st.button("🚀 ابدأ فلترة النخبة"):
+if st.button("🚀 تشغيل المسح الاحترافي"):
     url = "https://scanner.tradingview.com/egypt/scan"
     res = requests.post(url, json={"markets": ["egypt"], "columns": ["name"]}, timeout=10)
     all_tickers = [item['s'].split(':')[1] for item in res.json()['data']]
 
     qualified = []
-    st.subheader("🔍 جاري حساب المستويات واصطياد الفرص")
+    st.subheader("🔍 فحص السيولة الذكية (OBV) واختراقات الحيتان")
     p1 = st.progress(0)
     status = st.empty()
     
     for i, sym in enumerate(all_tickers):
-        # حماية من التهنيج (Hedge protection)
-        if i % 25 == 0 and i > 0: time.sleep(1.2)
+        # منع التهنيج (Hedge Protection)
+        if i % 30 == 0 and i > 0: time.sleep(1.5)
             
-        status.text(f"يتم الآن تحليل: {sym} ({i+1}/{len(all_tickers)})")
+        status.text(f"جاري فحص $ {sym} ... ({i+1}/{len(all_tickers)})")
         try:
             handler = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=2)
             analysis = handler.get_analysis()
             ind = analysis.indicators
             
-            # --- الفلتر الصارم لتقليل العدد ---
-            # 1. فوق المتوسطات (SMA 20 & 50)
-            # 2. RSI في منطقة القوة (بين 55 و 70)
-            # 3. لازم يكون السعر قريب من الـ Pivot أو مخترقه بقوة
-            if (ind.get("close") > ind.get("SMA20")) and (55 < ind.get("RSI") < 72):
+            # --- شروط النخبة (وول ستريت) ---
+            # 1. السعر فوق الدعم (S1)
+            # 2. الفوليوم أعلى من متوسط 10 أيام (دخول سيولة)
+            # 3. مؤشر OBV في صعود (تجميع حقيقي)
+            if (ind.get("close") > ind.get("Pivot.M.Classic.S1")) and \
+               (ind.get("volume") > ind.get("average_volume_10d")) and \
+               (ind.get("OBV") > ind.get("OBV[1]")): # OBV النهاردة أعلى من امبارح
+                
                 qualified.append({
-                    "sym": sym, "price": ind.get("close"), "rsi": ind.get("RSI"),
-                    "s1": ind.get("Pivot.M.Classic.S1"), "s2": ind.get("Pivot.M.Classic.S2"),
+                    "sym": sym, "price": ind.get("close"), "vol": ind.get("volume"),
+                    "obv": ind.get("OBV"), "s1": ind.get("Pivot.M.Classic.S1"),
                     "r1": ind.get("Pivot.M.Classic.R1"), "r2": ind.get("Pivot.M.Classic.R2")
                 })
         except: continue
         p1.progress((i + 1) / len(all_tickers))
 
     if qualified:
-        st.subheader(f"✨ وجدت {len(qualified)} أسهم في منطقة ذهبية")
+        st.subheader(f"✅ تم تصفية {len(qualified)} فرصة قوية")
         p2 = st.progress(0)
         for i, s in enumerate(qualified):
-            status.markdown(f"🧠 AI يضع اللمسة الأخيرة لـ: **{s['sym']}**")
-            report = get_pro_ai_analysis(s)
+            status.markdown(f"🧠 AI يحلل تدفق السيولة لـ: **{s['sym']}**")
+            report = get_pro_analysis(s)
             
             st.markdown(f"""
             <div class="stock-card">
@@ -92,19 +93,18 @@ if st.button("🚀 ابدأ فلترة النخبة"):
                     <b style="color:#d4af37; font-size:24px;">$ {s['sym']}</b>
                     <b style="font-size:20px;">{s['price']:.2f} EGP</b>
                 </div>
-                <div class="levels">
-                    <span class="sup">دعم1: {s['s1']:.2f}</span>
-                    <span class="sup">دعم2: {s['s2']:.2f}</span>
-                    <span class="res">مقاومة1: {s['r1']:.2f}</span>
-                    <span class="res">مقاومة2: {s['r2']:.2f}</span>
+                <div style="margin: 15px 0; display: flex; gap: 10px;">
+                    <span class="level-tag">الدعم: {s['s1']:.2f}</span>
+                    <span class="level-tag" style="color:#ff4b4b;">المقاومة: {s['r1']:.2f}</span>
+                    <span class="level-tag" style="color:#00ff41;">OBV صاعد 📈</span>
                 </div>
-                <div style="color:#fff; margin-top:12px; padding:10px; border-top:1px dashed #333; font-size:14px;">
-                    🤖 <b>رؤية الـ AI:</b> {report}
+                <div class="obv-signal">
+                    💬 رؤية المحلل الذكي: {report}
                 </div>
             </div>
             """, unsafe_allow_html=True)
             p2.progress((i + 1) / len(qualified))
-            time.sleep(0.5)
+            time.sleep(0.4)
         status.empty()
     else:
-        st.warning("السوق حالياً هادئ، لا توجد أسهم تطابق 'شروط النخبة'.")
+        st.warning("لا توجد فرص تجميع واضحة حالياً. راقب السوق لاحقاً.")
