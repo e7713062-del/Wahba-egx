@@ -12,25 +12,32 @@ today_key = now_egypt.strftime("%Y-%m-%d")
 
 st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 2. التصميم المؤسسي ---
+# --- 2. التصميم المؤسسي (نفس التصميم بدون تغيير حرف) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
 * { font-family: 'Tajawal', sans-serif; }
 .stApp { background-color: #000000; color: #ffffff; }
+/* الهيدر */
 .nav-bar { text-align: center; padding: 30px; background: #000; border-bottom: 2px solid #d4af37; margin-bottom: 20px; }
 .logo-text { font-size: 30px; font-weight: 900; color: #fff; letter-spacing: 2px; }
 .logo-text span { color: #d4af37; }
+/* التصنيفات */
 .section-header { color: #d4af37; border-right: 5px solid #d4af37; padding-right: 15px; margin: 40px 0 20px 0; font-size: 24px; font-weight: bold; text-align: right; }
+/* كروت الأسهم الذهبية */
 .stock-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 15px; padding: 25px; margin-bottom: 20px; border-top: 3px solid #d4af37; }
 .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
-.trade-tag { background: #1a1a1a; color: #d4af37; padding: 3px 12px; border-radius: 6px; font-size: 12px; border: 1px solid #d4af37; margin-right: 10px; vertical-align: middle; }
 .price-val { font-size: 24px; font-weight: bold; color: #fff; }
+/* التاج الجديد للتصنيف */
+.trade-tag { background: #1a1a1a; color: #d4af37; padding: 4px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #d4af37; margin-right: 10px; font-weight: bold; }
+/* مستويات الدعم والمقاومة */
 .levels-grid { display: flex; justify-content: space-between; margin-top: 20px; background: #000; padding: 10px; border-radius: 8px; border: 1px solid #111; }
 .level-item { text-align: center; }
 .label { font-size: 10px; color: #555; display: block; }
 .num { font-size: 14px; font-weight: bold; color: #d4af37; font-family: monospace; }
+/* زر التشغيل */
 .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 60px !important; width: 100% !important; border: none !important; }
+/* التذييل */
 .footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #444; font-size: 12px; }
 </style>
 <div class="nav-bar">
@@ -39,7 +46,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. محرك البيانات ---
+# --- 3. محرك البيانات (أرشفة كاملة لليوم) ---
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
     try:
@@ -61,19 +68,22 @@ def run_strategic_scan(date_key):
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # الأساس (نفس حساب السكور القديم)
+            # --- الأساس: حساب السكور ---
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             if ind.get("RSI") and 50 <= ind.get("RSI") <= 68: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
             
-            # الطوبة الجديدة: تحديد نوع التوصية (Day vs Swing)
-            vol_ratio = (ind.get("volume") / ind.get("average_volume_10d")) if ind.get("average_volume_10d") else 1
-            if vol_ratio > 1.4 or abs(ind.get("change", 0)) > 2.5:
-                t_type = "⚡ DAY TRADING"
+            # --- الطوبة الجديدة: تحديد نوع التداول ---
+            vol_avg = ind.get("average_volume_10d")
+            curr_vol = ind.get("volume")
+            vol_ratio = curr_vol / vol_avg if vol_avg and vol_avg > 0 else 1
+            
+            if vol_ratio > 1.5 or abs(ind.get("change", 0)) > 2.5:
+                trade_type = "⚡ DAY TRADING"
             else:
-                t_type = "🌊 SWING"
+                trade_type = "🌊 SWING"
 
             results.append({
                 "Symbol": sym,
@@ -82,16 +92,18 @@ def run_strategic_scan(date_key):
                 "S1": round(ind.get("Pivot.M.Classic.S1"), 2),
                 "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
                 "R1": round(ind.get("Pivot.M.Classic.R1"), 2),
-                "Signal": rec.replace("_", " "),
-                "Type": t_type
+                "Signal": rec,
+                "Type": trade_type
             })
-        except: continue
+        except:
+            continue
         p_bar.progress((i + 1) / len(symbols))
     p_bar.empty()
     return pd.DataFrame(results)
 
 # --- 4. واجهة التحكم والعرض ---
 st.write(f"توقيت التقرير: {now_egypt.strftime('%H:%M')} | {today_key}")
+
 if st.button('إصدار التقرير الذهبي لليوم'):
     st.session_state.final_report = run_strategic_scan(today_key)
 
@@ -99,6 +111,7 @@ if 'final_report' not in st.session_state:
     st.session_state.final_report = None
 
 data = st.session_state.final_report
+
 if data is not None and not data.empty:
     # تصنيف 1: نخبة النخبة الذهبية
     t1 = data[data['Score'] >= 9]
@@ -107,20 +120,21 @@ if data is not None and not data.empty:
         for _, row in t1.iterrows():
             st.markdown(f"""
             <div class="stock-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div>
-                <span class="symbol-name">{row['Symbol']}</span>
-                <span class="trade-tag">{row['Type']}</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
+                    <div>
+                        <span class="symbol-name">{row['Symbol']}</span>
+                        <span class="trade-tag">{row['Type']}</span>
+                    </div>
+                    <span style="color:#d4af37; font-weight:bold;">{row['Signal']}</span>
+                </div>
+                <div class="price-val" style="text-align: right;">{row['Price']} <small style="font-size:12px; color:#444;">EGP</small></div>
+                <div class="levels-grid">
+                    <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{row['S1']}</span></div>
+                    <div class="level-item"><span class="label">PIVOT (ارتكاز)</span><span class="num">{row['P']}</span></div>
+                    <div class="level-item"><span class="label">R1 (مقاومة)</span><span class="num">{row['R1']}</span></div>
+                </div>
             </div>
-            <span style="color:#d4af37; font-weight:bold;">{row['Signal']}</span>
-            </div>
-            <div class="price-val">{row['Price']} <small style="font-size:12px; color:#444;">EGP</small></div>
-            <div class="levels-grid">
-            <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{row['S1']}</span></div>
-            <div class="level-item"><span class="label">PIVOT (ارتكاز)</span><span class="num">{row['P']}</span></div>
-            <div class="level-item"><span class="label">R1 (مقاومة)</span><span class="num">{row['R1']}</span></div>
-            </div>
-            </div> """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
     # تصنيف 2: النخبة الصاعدة
     t2 = data[(data['Score'] >= 6) & (data['Score'] < 9)]
@@ -131,17 +145,19 @@ if data is not None and not data.empty:
             with cols[idx % 2]:
                 st.markdown(f"""
                 <div class="stock-card" style="border-top: 1px solid #d4af37;">
-                <div style="display:flex; justify-content:space-between;">
-                    <div style="font-size:20px; font-weight:900;">{row['Symbol']}</div>
-                    <div class="trade-tag" style="font-size:10px;">{row['Type']}</div>
+                    <div style="display:flex; justify-content:space-between; direction: rtl;">
+                        <div style="font-size:20px; font-weight:900;">{row['Symbol']}</div>
+                        <div class="trade-tag" style="font-size:10px;">{row['Type']}</div>
+                    </div>
+                    <div style="color:#d4af37; font-size:18px; text-align: right;">{row['Price']} EGP</div>
+                    <div style="font-size:11px; color:#444; margin-top:10px; text-align: center;">R1: {row['R1']} | S1: {row['S1']}</div>
                 </div>
-                <div style="color:#d4af37; font-size:18px;">{row['Price']} EGP</div>
-                <div style="font-size:11px; color:#444; margin-top:10px;">R1: {row['R1']} | S1: {row['S1']}</div>
-                </div> """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
 # --- 5. التذييل الفاخر ---
 st.markdown("""
 <div class="footer-box">
 <p style="font-weight:bold; color:#d4af37;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
 <p>التقرير مؤرشف لليوم لضمان الثبات الكامل. جميع الحقوق محفوظة 2026</p>
-</div> """, unsafe_allow_html=True)
+</div>
+""", unsafe_allow_html=True)
