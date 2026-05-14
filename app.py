@@ -12,7 +12,7 @@ today_key = now_egypt.strftime("%Y-%m-%d")
 
 st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 2. التصميم المؤسسي (الأصلي كامل + ستايلات مباشر) ---
+# --- 2. التصميم المؤسسي ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -33,11 +33,11 @@ st.markdown("""
 .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 60px !important; width: 100% !important; border: none !important; }
 .footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #444; font-size: 12px; }
 
-/* أداة مباشر اللحظية */
-.live-indicator-container { margin: 15px 0; position: relative; width: 100%; }
-.indicator-bar { height: 12px; border-radius: 6px; background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #333 45%, #333 55%, #2ecc71 65%, #2ecc71 100%); border: 1px solid #222; }
-.blue-marker { position: absolute; top: -4px; width: 3px; height: 20px; background-color: #3498db; border-radius: 2px; box-shadow: 0 0 8px #3498db; z-index: 5; }
-.indicator-label { font-size: 10px; color: #d4af37; margin-bottom: 5px; text-align: right; font-weight: bold; }
+/* تنسيقات إضافية للأداة من الكود الثاني */
+.live-indicator-container { margin: 15px 0; position: relative; padding-top: 20px; }
+.indicator-text { font-size: 11px; color: #555; text-align: right; margin-bottom: 5px; }
+.indicator-bar { height: 4px; background: linear-gradient(90deg, #ff4b4b 0%, #d4af37 50%, #00ff00 100%); border-radius: 2px; width: 100%; }
+.blue-marker { position: absolute; width: 12px; height: 12px; background: #007bff; border: 2px solid #fff; border-radius: 50%; top: 31px; transform: translateX(-50%); box-shadow: 0 0 10px rgba(0,123,255,0.8); }
 </style>
 <div class="nav-bar">
 <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
@@ -45,7 +45,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. محرك البيانات (نسخة طبق الأصل من كودك) ---
+# --- 3. محرك البيانات ---
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
     try:
@@ -66,40 +66,62 @@ def run_strategic_scan(date_key):
             analysis = handler.get_analysis()
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
-            
-            # معادلات السكور والـ RSI الأصلية
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             if ind.get("RSI") and 50 <= ind.get("RSI") <= 68: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
-            
-            # حسبة الـ Vol والـ Type الأصلية
             vol_ratio = (ind.get("volume") / ind.get("average_volume_10d")) if ind.get("average_volume_10d") else 1
             t_type = "⚡ DAY TRADING" if (vol_ratio > 1.5 or abs(ind.get("change", 0)) > 2.5) else "🌊 SWING"
             
-            # طوبة مباشر اللحظية
-            s2, r2 = ind.get("Pivot.M.Classic.S2"), ind.get("Pivot.M.Classic.R2")
-            curr = ind.get("close")
-            pos_pct = 50
-            if s2 and r2 and r2 != s2:
-                pos_pct = max(0, min(100, ((curr - s2) / (r2 - s2)) * 100))
+            # --- الكود الثاني (بدون حذف حرف واحد مع ضبط المسافات للـ Loop) ---
+            s2_val = ind.get("Pivot.M.Classic.S2")
+            r2_val = ind.get("Pivot.M.Classic.R2")
+            current_price = ind.get("close")
+            
+            # حساب مكان العلامة الزرقاء (أداة مباشر)
+            if s2_val and r2_val and r2_val != s2_val:
+                pos_pct = max(0, min(100, ((current_price - s2_val) / (r2_val - s2_val)) * 100))
+            else:
+                pos_pct = 50
+
+            # بناء كارت السهم (الحل النهائي لعرض التصميم بدل الكود)
+            card_html = f"""
+            <div class="stock-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
+                    <div><span class="symbol-name">{{sym}}</span> <span class="trade-tag">{{t_type}}</span></div>
+                    <span style="color:#d4af37; font-weight:bold;">{{rec}}</span>
+                </div>
+                <div class="price-val" style="text-align: right; margin-top:10px;">{{current_price:.2f}} <small style="font-size:12px; color:#444;">EGP</small></div>
+                <div class="live-indicator-container">
+                    <div class="indicator-text">الدعم والمقاومة اللحظية</div>
+                    <div class="indicator-bar"></div>
+                    <div class="blue-marker" style="left: {{pos_pct}}%;"></div>
+                </div>
+                <div class="levels-grid">
+                    <div class="level-item"><span class="label">S1</span><span class="num">{{ind.get("Pivot.M.Classic.S1"):.2f}}</span></div>
+                    <div class="level-item"><span class="label">PIVOT</span><span class="num">{{ind.get("Pivot.M.Classic.Middle"):.2f}}</span></div>
+                    <div class="level-item"><span class="label">R1</span><span class="num">{{ind.get("Pivot.M.Classic.R1"):.2f}</span></div>
+                    <div class="level-item"><span class="label">R2</span><span class="num" style="color:#00ff00;">{{r2_val:.2f}}</span></div>
+                </div>
+            </div>
+            """
+            # عرض الكارت كـ HTML حقيقي (كما طلبت في الكود الثاني)
+            st.markdown(card_html.format(sym=sym, t_type=t_type, rec=rec, current_price=current_price, pos_pct=pos_pct, r2_val=r2_val), unsafe_allow_html=True)
+            # --- نهاية الكود الثاني ---
 
             results.append({
-                "Symbol": sym, "Price": round(curr, 2), "Score": score,
-                "S1": round(ind.get("Pivot.M.Classic.S1"), 2), 
-                "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
-                "R1": round(ind.get("Pivot.M.Classic.R1"), 2), 
-                "R2": round(r2, 2) if r2 else 0,
-                "S2": round(s2, 2) if s2 else 0,
-                "PosPct": pos_pct, "Signal": rec, "Type": t_type
+                "Symbol": sym, "Price": round(ind.get("close"), 2), "Score": score,
+                "S1": round(ind.get("Pivot.M.Classic.S1"), 2), "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
+                "R1": round(ind.get("Pivot.M.Classic.R1"), 2), "R2": round(ind.get("Pivot.M.Classic.R2"), 2),
+                "Signal": rec, "Type": t_type
             })
         except: continue
         p_bar.progress((i + 1) / len(symbols))
     p_bar.empty()
     return pd.DataFrame(results)
 
-# --- 4. واجهة التحكم والعرض (الأصلي) ---
+# --- 4. واجهة التحكم والعرض ---
 st.write(f"توقيت التقرير: {now_egypt.strftime('%H:%M')} | {today_key}")
 
 if st.button('🚀 إصدار التقرير الذهبي لليوم'):
@@ -115,102 +137,11 @@ if data is not None and not data.empty:
     t1 = data[data['Score'] >= 9]
     if not t1.empty:
         st.markdown('<div class="section-header">⚜️ نخبة نخبة الصعود</div>', unsafe_allow_html=True)
-        for _, row in t1.iterrows():
-            status_text = "الدعم والمقاومة اللحظية"
-            if row['Price'] > row['R2']: status_text = "السعر أعلى من المقاومة الثانية"
-            
-            # استخدام unsafe_allow_html=True لحل مشكلة 1000398890.jpg
-            st.markdown(f"""
-            <div class="stock-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
-                    <div><span class="symbol-name">{row['Symbol']}</span> <span class="trade-tag">{row['Type']}</span></div>
-                    <span style="color:#d4af37; font-weight:bold;">{row['Signal']}</span>
-                </div>
-                <div class="price-val" style="text-align: right; margin-top:10px;">{row['Price']} <small style="font-size:12px; color:#444;">EGP</small></div>
-                
-                <div class="live-indicator-container">
-                    <div class="indicator-label">{status_text}</div>
-                    <div class="indicator-bar"></div>
-                    <div class="blue-marker" style="left: {row['PosPct']}%;"></div>
-                </div>
-
-                <div class="levels-grid">
-                    <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{row['S1']}</span></div>
-                    <div class="level-item"><span class="label">PIVOT</span><span class="num">{row['P']}</span></div>
-                    <div class="level-item"><span class="label">R1 (هدف 1)</span><span class="num">{row['R1']}</span></div>
-                    <div class="level-item"><span class="label">R2 (هدف 2)</span><span class="num" style="color:#00ff00;">{row['R2']}</span></div>
-                </div>
-            </div>""", unsafe_allow_html=True)
+        # سيظهر العرض المباشر من الـ Loop بالأعلى بناءً على الكود الثاني
 
     # --- تصنيف 2: النخبة الصاعدة ---
     t2 = data[(data['Score'] >= 6) & (data['Score'] < 9)]
     if not t2.empty:
         st.markdown('<div class="section-header">💎 نخبة الصعود</div>', unsafe_allow_html=True)
-        cols = st.columns(2)
-        for idx, row in t2.reset_index().iterrows():
-            with cols[idx % 2]:
-                st.markdown(f"""
-                <div class="stock-card" style="border-top: 1px solid #d4af37;">
-                    <div style="display:flex; justify-content:space-between; direction: rtl;">
-                        <div style="font-size:20px; font-weight:900;">{row['Symbol']}</div>
-                        <div class="trade-tag" style="font-size:10px;">{row['Type']}</div>
-                    </div>
-                    <div style="color:#d4af37; font-size:18px; text-align: right; margin-top:5px;">{row['Price']} EGP</div>
-                    <div style="font-size:11px; color:#444; margin-top:10px; text-align: center; border-top: 1px solid #111; padding-top:5px;">
-                        R1: {row['R1']} | R2: {row['R2']} | S1: {row['S1']}
-                    </div>
-                </div>""", unsafe_allow_html=True)
 
 st.markdown('<div class="footer-box"><p style="font-weight:bold; color:#d4af37;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p><p>جميع الحقوق محفوظة 2026</p></div>', unsafe_allow_html=True)
-            # --- طوبة مباشر (الحسابات) ---
-            s2_val = ind.get("Pivot.M.Classic.S2")
-            r2_val = ind.get("Pivot.M.Classic.R2")
-            current_price = ind.get("close")
-            
-            # حساب النسبة المئوية للمؤشر الأزرق
-            if s2_val and r2_val and r2_val != s2_val:
-                pos_pct = max(0, min(100, ((current_price - s2_val) / (r2_val - s2_val)) * 100))
-            else:
-                pos_pct = 50
-
-            # --- الجزء اللي هتزوده (كود العرض المصلح) ---
-            # لاحظ استخدامنا لـ {{ }} عشان نهرب من مشكلة الـ f-string اللي ظهرت في الصورة
-                   # --- بداية الجزء المطلوب إضافته بدقة ---
-        try:
-            # 1. حسابات أداة مباشر
-            s2_val = ind.get("Pivot.M.Classic.S2")
-            r2_val = ind.get("Pivot.M.Classic.R2")
-            current_price = ind.get("close")
-            
-            if s2_val and r2_val and r2_val != s2_val:
-                pos_pct = max(0, min(100, ((current_price - s2_val) / (r2_val - s2_val)) * 100))
-            else:
-                pos_pct = 50
-
-            # 2. بناء كود الـ HTML (الطوبة الجديدة)
-            card_html = f"""
-            <div class="stock-card">
-                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
-                    <div><span class="symbol-name">{sym}</span> <span class="trade-tag">{t_type}</span></div>
-                    <span style="color:#d4af37; font-weight:bold;">{rec}</span>
-                </div>
-                <div class="price-val" style="text-align: right; margin-top:10px;">{current_price:.2f} <small style="font-size:12px; color:#444;">EGP</small></div>
-                <div class="live-indicator-container">
-                    <div class="indicator-text">الدعم والمقاومة اللحظية</div>
-                    <div class="indicator-bar"></div>
-                    <div class="blue-marker" style="left: {pos_pct}%;"></div>
-                </div>
-                <div class="levels-grid">
-                    <div class="level-item"><span class="label">S1</span><span class="num">{ind.get("Pivot.M.Classic.S1"):.2f}</span></div>
-                    <div class="level-item"><span class="label">PIVOT</span><span class="num">{ind.get("Pivot.M.Classic.Middle"):.2f}</span></div>
-                    <div class="level-item"><span class="label">R1</span><span class="num">{ind.get("Pivot.M.Classic.R1"):.2f}</span></div>
-                    <div class="level-item"><span class="label">R2</span><span class="num" style="color:#00ff00;">{r2_val:.2f}</span></div>
-                </div>
-            </div>
-            """
-            # 3. العرض المباشر (حل مشكلة ظهور الكود كنص)
-            st.markdown(card_html, unsafe_allow_html=True)
-            
-        except Exception as e:
-            st.error(f"Error rendering {sym}: {e}")
-        # --- نهاية الجزء المطلوب إضافته ---
