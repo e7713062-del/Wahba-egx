@@ -12,7 +12,7 @@ today_key = now_egypt.strftime("%Y-%m-%d")
 
 st.set_page_config(page_title="Wahba Intelligence", layout="wide")
 
-# --- 2. التصميم المؤسسي (كامل كما هو مع إضافة ستايل المؤشر) ---
+# --- 2. التصميم المؤسسي (الأصلي كامل + ستايلات مباشر) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -33,11 +33,11 @@ st.markdown("""
 .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 60px !important; width: 100% !important; border: none !important; }
 .footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #444; font-size: 12px; }
 
-/* طوبة أداة مباشر الإضافية */
-.live-indicator-container { margin-top: 15px; margin-bottom: 15px; position: relative; width: 100%; }
-.indicator-bar { height: 12px; border-radius: 6px; background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #333 45%, #333 55%, #2ecc71 65%, #2ecc71 100%); width: 100%; border: 1px solid #222; }
-.blue-marker { position: absolute; top: -4px; width: 3px; height: 20px; background-color: #3498db; border-radius: 2px; box-shadow: 0 0 8px #3498db; z-index: 5; transition: left 0.5s ease; }
-.indicator-text { font-size: 10px; color: #d4af37; margin-bottom: 4px; text-align: right; font-weight: bold; }
+/* أداة مباشر اللحظية */
+.live-indicator-container { margin: 15px 0; position: relative; width: 100%; }
+.indicator-bar { height: 12px; border-radius: 6px; background: linear-gradient(to right, #ff4d4d 0%, #ff4d4d 35%, #333 45%, #333 55%, #2ecc71 65%, #2ecc71 100%); border: 1px solid #222; }
+.blue-marker { position: absolute; top: -4px; width: 3px; height: 20px; background-color: #3498db; border-radius: 2px; box-shadow: 0 0 8px #3498db; z-index: 5; }
+.indicator-label { font-size: 10px; color: #d4af37; margin-bottom: 5px; text-align: right; font-weight: bold; }
 </style>
 <div class="nav-bar">
 <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
@@ -45,7 +45,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# --- 3. محرك البيانات (مع الحفاظ على كل الـ Indicators الأصلية) ---
+# --- 3. محرك البيانات (نسخة طبق الأصل من كودك) ---
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
     try:
@@ -67,31 +67,31 @@ def run_strategic_scan(date_key):
             ind = analysis.indicators
             rec = analysis.summary["RECOMMENDATION"]
             
-            # --- حسابات أداة مباشر (الطوبة الجديدة) ---
-            s2 = ind.get("Pivot.M.Classic.S2")
-            r2 = ind.get("Pivot.M.Classic.R2")
-            curr = ind.get("close")
-            pos_pct = 50
-            if s2 and r2 and r2 != s2:
-                pos_pct = ((curr - s2) / (r2 - s2)) * 100
-                pos_pct = max(0, min(100, pos_pct))
-
+            # معادلات السكور والـ RSI الأصلية
             score = 0
             if "STRONG_BUY" in rec: score += 5
             elif "BUY" in rec: score += 3
             if ind.get("RSI") and 50 <= ind.get("RSI") <= 68: score += 3
             if ind.get("close") > ind.get("Pivot.M.Classic.Middle"): score += 2
             
+            # حسبة الـ Vol والـ Type الأصلية
             vol_ratio = (ind.get("volume") / ind.get("average_volume_10d")) if ind.get("average_volume_10d") else 1
             t_type = "⚡ DAY TRADING" if (vol_ratio > 1.5 or abs(ind.get("change", 0)) > 2.5) else "🌊 SWING"
             
+            # طوبة مباشر اللحظية
+            s2, r2 = ind.get("Pivot.M.Classic.S2"), ind.get("Pivot.M.Classic.R2")
+            curr = ind.get("close")
+            pos_pct = 50
+            if s2 and r2 and r2 != s2:
+                pos_pct = max(0, min(100, ((curr - s2) / (r2 - s2)) * 100))
+
             results.append({
                 "Symbol": sym, "Price": round(curr, 2), "Score": score,
                 "S1": round(ind.get("Pivot.M.Classic.S1"), 2), 
-                "S2": round(s2, 2) if s2 else 0,
                 "P": round(ind.get("Pivot.M.Classic.Middle"), 2),
-                "R1": round(ind.get("Pivot.get.Classic.R1") if ind.get("Pivot.get.Classic.R1") else ind.get("Pivot.M.Classic.R1"), 2), 
+                "R1": round(ind.get("Pivot.M.Classic.R1"), 2), 
                 "R2": round(r2, 2) if r2 else 0,
+                "S2": round(s2, 2) if s2 else 0,
                 "PosPct": pos_pct, "Signal": rec, "Type": t_type
             })
         except: continue
@@ -99,7 +99,7 @@ def run_strategic_scan(date_key):
     p_bar.empty()
     return pd.DataFrame(results)
 
-# --- 4. واجهة التحكم والعرض (الأساسات الأصلية كاملة) ---
+# --- 4. واجهة التحكم والعرض (الأصلي) ---
 st.write(f"توقيت التقرير: {now_egypt.strftime('%H:%M')} | {today_key}")
 
 if st.button('🚀 إصدار التقرير الذهبي لليوم'):
@@ -111,27 +111,25 @@ if 'final_report' not in st.session_state:
 data = st.session_state.final_report
 
 if data is not None and not data.empty:
-    # --- تصنيف 1: نخبة النخبة (إضافة أداة مباشر داخل الكارت الأصلي) ---
+    # --- تصنيف 1: نخبة النخبة ---
     t1 = data[data['Score'] >= 9]
     if not t1.empty:
         st.markdown('<div class="section-header">⚜️ نخبة نخبة الصعود</div>', unsafe_allow_html=True)
         for _, row in t1.iterrows():
-            # نص الحالة زي مباشر
-            status_lbl = "الدعم والمقاومة اللحظية"
-            if row['Price'] > row['R2']: status_lbl = "السعر أعلى من المقاومة الثانية"
-            elif row['Price'] < row['S2']: status_lbl = "السعر أدنى من الدعم الثاني"
-
+            status_text = "الدعم والمقاومة اللحظية"
+            if row['Price'] > row['R2']: status_text = "السعر أعلى من المقاومة الثانية"
+            
+            # استخدام unsafe_allow_html=True لحل مشكلة 1000398890.jpg
             st.markdown(f"""
             <div class="stock-card">
                 <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
-                    <div><span class="symbol-name">{row['Symbol']}</span> <span class="trade-tag">{row.get('Type', 'N/A')}</span></div>
+                    <div><span class="symbol-name">{row['Symbol']}</span> <span class="trade-tag">{row['Type']}</span></div>
                     <span style="color:#d4af37; font-weight:bold;">{row['Signal']}</span>
                 </div>
                 <div class="price-val" style="text-align: right; margin-top:10px;">{row['Price']} <small style="font-size:12px; color:#444;">EGP</small></div>
                 
-                <!-- أداة مباشر (طوبة فوق طوبة) -->
                 <div class="live-indicator-container">
-                    <div class="indicator-text">{status_lbl}</div>
+                    <div class="indicator-label">{status_text}</div>
                     <div class="indicator-bar"></div>
                     <div class="blue-marker" style="left: {row['PosPct']}%;"></div>
                 </div>
@@ -144,7 +142,7 @@ if data is not None and not data.empty:
                 </div>
             </div>""", unsafe_allow_html=True)
 
-    # --- تصنيف 2: النخبة الصاعدة (كما كانت تماماً) ---
+    # --- تصنيف 2: النخبة الصاعدة ---
     t2 = data[(data['Score'] >= 6) & (data['Score'] < 9)]
     if not t2.empty:
         st.markdown('<div class="section-header">💎 نخبة الصعود</div>', unsafe_allow_html=True)
@@ -155,7 +153,7 @@ if data is not None and not data.empty:
                 <div class="stock-card" style="border-top: 1px solid #d4af37;">
                     <div style="display:flex; justify-content:space-between; direction: rtl;">
                         <div style="font-size:20px; font-weight:900;">{row['Symbol']}</div>
-                        <div class="trade-tag" style="font-size:10px;">{row.get('Type', 'N/A')}</div>
+                        <div class="trade-tag" style="font-size:10px;">{row['Type']}</div>
                     </div>
                     <div style="color:#d4af37; font-size:18px; text-align: right; margin-top:5px;">{row['Price']} EGP</div>
                     <div style="font-size:11px; color:#444; margin-top:10px; text-align: center; border-top: 1px solid #111; padding-top:5px;">
