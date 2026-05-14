@@ -162,3 +162,45 @@ if data is not None and not data.empty:
                 </div>""", unsafe_allow_html=True)
 
 st.markdown('<div class="footer-box"><p style="font-weight:bold; color:#d4af37;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p><p>جميع الحقوق محفوظة 2026</p></div>', unsafe_allow_html=True)
+            # --- طوبة مباشر (الحسابات) ---
+            s2_val = ind.get("Pivot.M.Classic.S2")
+            r2_val = ind.get("Pivot.M.Classic.R2")
+            current_price = ind.get("close")
+            
+            # حساب النسبة المئوية للمؤشر الأزرق
+            if s2_val and r2_val and r2_val != s2_val:
+                pos_pct = max(0, min(100, ((current_price - s2_val) / (r2_val - s2_val)) * 100))
+            else:
+                pos_pct = 50
+
+            # --- الجزء اللي هتزوده (كود العرض المصلح) ---
+            # لاحظ استخدامنا لـ {{ }} عشان نهرب من مشكلة الـ f-string اللي ظهرت في الصورة
+            card_html = f"""
+            <div class="stock-card">
+                <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
+                    <div>
+                        <span class="symbol-name">{sym}</span> 
+                        <span class="trade-tag">{t_type}</span>
+                    </div>
+                    <span style="color:#d4af37; font-weight:bold;">{rec}</span>
+                </div>
+                <div class="price-val" style="text-align: right; margin-top:10px;">
+                    {current_price:.2f} <small style="font-size:12px; color:#444;">EGP</small>
+                </div>
+                
+                <div class="live-indicator-container">
+                    <div class="indicator-text">الدعم والمقاومة اللحظية</div>
+                    <div class="indicator-bar"></div>
+                    <div class="blue-marker" style="left: {pos_pct}%;"></div>
+                </div>
+
+                <div class="levels-grid">
+                    <div class="level-item"><span class="label">S1 (دعم)</span><span class="num">{ind.get("Pivot.M.Classic.S1"):.2f}</span></div>
+                    <div class="level-item"><span class="label">PIVOT</span><span class="num">{ind.get("Pivot.M.Classic.Middle"):.2f}</span></div>
+                    <div class="level-item"><span class="label">R1 (هدف 1)</span><span class="num">{ind.get("Pivot.M.Classic.R1"):.2f}</span></div>
+                    <div class="level-item"><span class="label">R2 (هدف 2)</span><span class="num" style="color:#00ff00;">{r2_val:.2f}</span></div>
+                </div>
+            </div>
+            """
+            # دي أهم طوبة: بتعرض الكود كـ HTML حقيقي مش نص
+            st.markdown(card_html, unsafe_allow_html=True)
