@@ -75,8 +75,15 @@ def run_strategic_scan(date_key):
             elif "BUY" in rec: score += 3
             
             rsi = ind.get("RSI")
-            if rsi and 45 <= rsi <= 65: score += 3 # منطقة تجميع مثالية
+            if rsi and 45 <= rsi <= 65: score += 3 # منطقة تجمع مثالية
             
+            # --- منطق MACD المضاف حديثاً لفلترة الزخم ---
+            m_val = ind.get("MACD.macd")
+            m_sig = ind.get("MACD.signal")
+            if m_val is not None and m_sig is not None:
+                if m_val > m_sig: score += 2
+                else: score -= 5 
+
             close = ind.get("close")
             pivot = ind.get("Pivot.M.Classic.Middle")
             if close and pivot and close > pivot: score += 2
