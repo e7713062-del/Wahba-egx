@@ -189,3 +189,16 @@ st.markdown("""
     <p>© 2026 جميع الحقوق محفوظة</p>
 </div>
 """, unsafe_allow_html=True)
+# =========================================================================
+# 🧱 طوبة التسويق والأتمتة: مضافة بالكامل في نهاية الملف بدون لمس ما سبق 🧱
+# =========================================================================
+DB_FILE = f"report_{today_key}.csv"
+
+# 1. إذا قمت بالضغط على الزر وتولدت بيانات جديدة، يتم حفظها فوراً وتلقائياً في ملف اليوم
+if 'final_report' in st.session_state and not st.session_state.final_report.empty:
+    st.session_state.final_report.to_csv(DB_FILE, index=False)
+
+# 2. إذا دخل مستخدم والموقع فارغ، وكان هناك ملف محفوظ مسبقاً للجلسة، يتم تحميله وعرضه فوراً دون انتظار فحص جديد
+if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
+    st.session_state.final_report = pd.read_csv(DB_FILE)
+    st.rerun()
