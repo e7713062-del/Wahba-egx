@@ -92,7 +92,7 @@ if st.button("دخول المنصة 🚀"):
     else:
         st.error("❌ بيانات الدخول غير صحيحة.")
 
-                st.error("❌ بيانات الدخول خاطئة.")
+            
     with tab2:
         new_user = st.text_input("اختر اسم مستخدم", placeholder="الاسم ثلاثي", key="reg_user").strip()
         new_pass = st.text_input("اختر كلمة مرور", type="password", placeholder="••••••", key="reg_pass").strip()
