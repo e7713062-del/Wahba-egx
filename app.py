@@ -202,3 +202,76 @@ if 'final_report' in st.session_state and not st.session_state.final_report.empt
 if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
     st.session_state.final_report = pd.read_csv(DB_FILE)
     st.rerun()
+# =========================================================================
+# 🧱 طوبة لوحة تحكم الأدمن: مضافة في آخر الملف تماماً لإدارة القبول والرفض والتجديد
+# =========================================================================
+
+st.markdown("<br><hr style='border-color: #1a1a1a;'>", unsafe_allow_html=True)
+with st.expander("🛠️ لوحة تحكم الإدارة السرية (خاصة بـ مصطفى فقط)"):
+    admin_password = st.text_input("أدخل كلمة مرور الأدمن لفتح التحكم:", type="password", key="admin_pass_field")
+    
+    # الباسورد الخاص بك لدخول لوحة التحكم
+    if admin_password == "WAHBA-ADMIN-2026": 
+        st.subheader("📋 إدارة المشتركين وتجديد الاشتراكات")
+        df_u = pd.read_csv(DB_USERS)
+        
+        # 1. عرض طلبات الاشتراكات الجديدة (المعلقة)
+        pending_users = df_u[df_u["status"] == "في الانتظار"]
+        st.markdown("### ⏳ طلبات جديدة في انتظار التأكيد:")
+        if pending_users.empty:
+            st.info("👌 لا توجد طلبات جديدة معلقة حالياً.")
+        else:
+            for idx, row in pending_users.iterrows():
+                col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
+                col1.write(f"👤 **الاسم:** {row['username']} | 🔑 **الباسورد:** {row['password']}")
+                col2.write(f"📱 **رقم الكاش:** `{row['vodafone_number']}`")
+                
+                # زر قبول العميل لأول مرة
+                if col3.button("قبول وتفعيل ✅", key=f"accept_{row['username']}_{idx}"):
+                    df_u.loc[df_u["username"] == row["username"], "status"] = "مقبول"
+                    df_u.to_csv(DB_USERS, index=False)
+                    st.success(f"تم تفعيل حساب {row['username']} بنجاح!")
+                    st.rerun()
+                
+                # زر الرفض
+                if col4.button("رفض وحجب ❌", key=f"reject_{row['username']}_{idx}"):
+                    df_u.loc[df_u["username"] == row["username"], "status"] = "مرفوض"
+                    df_u.to_csv(DB_USERS, index=False)
+                    st.error(f"تم رفض حساب {row['username']}.")
+                    st.rerun()
+
+        st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
+        
+        # 2. عرض المشتركين الحاليين وخيار التجديد الفوري
+        st.markdown("### 🔄 تجديد الاشتراكات المنتهية:")
+        active_and_expired = df_u[df_u["status"] == "مقبول"]
+        
+        if active_and_expired.empty:
+            st.info("لا يوجد مستخدمين مقبولين حالياً في النظام.")
+        else:
+            for idx, row in active_and_expired.iterrows():
+                user_expiry = datetime.strptime(row['expiry_date'], "%Y-%m-%d").date()
+                is_expired = current_date > user_expiry
+                
+                col_u1, col_u2, col_u3 = st.columns([2, 2, 1])
+                
+                if is_expired:
+                    col_u1.markdown(f"👤 **{row['username']}** | 🛑 <span style='color:red;font-weight:bold;'>انتهى اشتراكه</span>", unsafe_allow_html=True)
+                else:
+                    col_u1.markdown(f"👤 **{row['username']}** | ✅ <span style='color:green;'>شغال</span>", unsafe_allow_html=True)
+                
+                col_u2.write(f"📅 تاريخ الانتهاء الحالي: `{row['expiry_date']}`")
+                
+                # زر التجديد السحري 🔁 (الزرار اللي أنت سألت عليه)
+                if col_u3.button("تجديد 30 يوم إضافية 🔁", key=f"renew_{row['username']}_{idx}"):
+                    # حساب 30 يوم جديدة تبدأ من النهاردة
+                    new_expiry_calc = (current_date + timedelta(days=30)).strftime("%Y-%m-%d")
+                    df_u.loc[df_u["username"] == row["username"], "expiry_date"] = new_expiry_calc
+                    df_u.loc[df_u["username"] == row["username"], "status"] = "مقبول" # للتأكد من إعادة تفعيله لو كان محجوباً
+                    df_u.to_csv(DB_USERS, index=False)
+                    st.success(f"🎉 مبروك! تم تجديد اشتراك {row['username']} بنجاح لمدة شهر جديد حتى: {new_expiry_calc}")
+                    st.rerun()
+
+        # 3. جدول البيانات الشامل للمتابعة
+        if st.checkbox("📊 استعراض قاعدة بيانات المشتركين بالكامل"):
+            st.dataframe(df_u)
