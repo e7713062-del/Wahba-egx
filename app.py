@@ -76,7 +76,22 @@ if not st.session_state.logged_in:
     with tab1:
         u_clean = st.text_input("اسم المستخدم", placeholder="أدخل اسم الحساب", key="login_user").strip()
         p_clean = st.text_input("كلمة المرور", type="password", placeholder="••••••", key="login_pass").strip()
-        if st.button("دخول المنصة 🚀", key="login_btn"):
+        # استبدل الجزء الخاص بالدخول في الكود بـ:
+
+if st.button("دخول المنصة 🚀"):
+    user_found = next((u for u in st.session_state.users if u.get('username') == u_clean and str(u.get('password')) == p_clean), None)
+    if user_found:
+        if user_found.get('status') == 'active':
+            # تنظيف أي بيانات دخول قديمة قبل تعيين الجديدة
+            st.session_state.logged_in = True
+            st.session_state.current_user = user_found.get('username')
+            st.session_state.user_role = user_found.get('role')
+            st.rerun() # تحديث الصفحة فوراً بعد تسجيل الدخول
+        else:
+            st.error("❌ حسابك غير نشط.")
+    else:
+        st.error("❌ بيانات الدخول غير صحيحة.")
+
             user_found = next((u for u in st.session_state.users if u.get('username') == u_clean and u.get('password') == p_clean), None)
             if user_found:
                 if user_found.get('status', 'pending') == 'active':
