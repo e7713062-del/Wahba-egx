@@ -4,7 +4,7 @@ import pandas as pd
 import requests
 from datetime import datetime
 import pytz
-import os  # مكتبة مهمة لعمل نظام الأتمتة والحفظ المحيط بالكود
+import os
 
 # --- 1. إعدادات الوقت والهوية ---
 egypt_tz = pytz.timezone('Africa/Cairo')
@@ -13,63 +13,53 @@ today_key = now_egypt.strftime("%Y-%m-%d")
 
 st.set_page_config(page_title="Wahba Intelligence", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. نظام تسجيل الدخول المطور (تم دمجه بالكامل دون المساس بالكود الأساسي) ---
+# --- 2. التحكم في حالة تسجيل الدخول ---
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
+# --- 3. واجهة تسجيل الدخول المباشرة بالباسورد الجديد ---
 if not st.session_state.logged_in:
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
     * { font-family: 'Tajawal', sans-serif; }
     .stApp { background-color: #000000; color: #ffffff; }
-    .login-container {
-        max-width: 450px;
-        margin: 80px auto 20px auto;
-        padding: 40px;
-        background: #0a0a0a;
-        border: 1px solid #1a1a1a;
-        border-top: 4px solid #d4af37;
-        border-radius: 15px;
-        text-align: center;
-    }
-    .logo-login { font-size: 32px; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 5px; }
-    .logo-login span { color: #d4af37; }
-    .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 45px !important; width: 100% !important; border: none !important; }
-    .stButton>button:hover { background: #fff !important; }
+    .login-header-box { text-align: center; padding: 25px; background: linear-gradient(180deg, #111 0%, #000 100%); border-bottom: 2px solid #d4af37; margin-bottom: 30px; }
+    .logo-text-login { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 2px; }
+    .logo-text-login span { color: #d4af37; }
     </style>
-    <div class="login-container">
-        <div class="logo-login">WAHBA <span>INTELLIGENCE</span></div>
-        <p style="color:#666; font-size:12px;">PREMIUM ALGORITHMIC TRADING TERMINAL</p>
-        <p style="color:#d4af37; font-weight:bold; margin-top:20px; font-size:15px;">تسجيل الدخول إلى النظام المؤسسي</p>
+    <div class="login-header-box">
+        <div class="logo-text-login">WAHBA <span>INTELLIGENCE</span></div>
+        <p style="color:#666; font-size:12px; margin-top:5px;">PREMIUM ALGORITHMIC TRADING TERMINAL</p>
     </div>
     """, unsafe_allow_html=True)
 
     col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
     with col_l2:
-        u_clean = st.text_input("اسم المستخدم", placeholder="أدخل اسم المستخدم").strip()
+        u_clean = st.text_input("اسم المستخدم", placeholder="أدخل اسم الحساب").strip()
         p_clean = st.text_input("كلمة المرور", type="password", placeholder="••••••").strip()
         
         if st.button("دخول المنصة 🚀"):
-            # فحص الحساب الخاص بالمهندس مصطفى تامر مباشرة
+            # فحص الحساب الخاص بالمهندس مصطفى تامر مباشرة بالباسورد الجديد 012700
             if u_clean == "مصطفى تامر" and p_clean == "012700":
                 st.session_state.logged_in = True
                 st.session_state.current_user = "المهندس مصطفى"
                 st.session_state.expiry_display = "حساب إدارة دائم"
                 st.success("👑 أهلاً بك يا باشمهندس مصطفى تامر! جاري تفعيل المنصة...")
                 st.rerun()
-            # فحص حساب الأدمن الإضافي بكلمة المرور المطلوبة
+            
+            # فحص حساب الأدمن الإضافي بالباسورد الجديد 012700
             elif u_clean == "admin" and p_clean == "012700":
                 st.session_state.logged_in = True
-                st.session_state.current_user = "المدير العام (Admin)"
+                st.session_state.current_user = "المدير العام"
                 st.session_state.expiry_display = "حساب إدارة دائم"
                 st.success("💼 تم تسجيل الدخول بصلاحيات الإدارة العامة...")
                 st.rerun()
             else:
-                st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة.")
+                st.error("❌ بيانات الدخول غير صحيحة.")
     st.stop()
 
-# --- 3. التصميم المؤسسي المطور (CSS كاملاً بدون أي حذف) ---
+# --- 4. التصميم المؤسسي المطور (CSS كاملاً بدون حذف لحفظ الواجهة) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -97,21 +87,14 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# شريط الهوية العلوي لتأكيد الصلاحية المستمرة للمهندس مصطفى
-st.markdown(f"""
-<div style="display:flex; justify-content:space-between; direction:rtl; background:#0a0a0a; padding:10px 20px; border-radius:8px; margin-bottom:20px; border:1px solid #1a1a1a; font-size:14px;">
-    <div style="color:#fff;">👤 الحساب النشط: <b>{st.session_state.current_user}</b></div>
-    <div style="color:#d4af37;">🔑 رتبة الصلاحية: <b>{st.session_state.expiry_display}</b></div>
-</div>
-""", unsafe_allow_html=True)
-
-# --- 4. محرك البيانات الاستراتيجي (Multi-Timeframe Logic) ---
+# --- 5. محرك البيانات الاستراتيجي والبحث التلقائي عن الأسهم الجديدة ---
 @st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
         payload = {"filter": [{"left": "market_cap_basic", "operation": "nempty"}], "markets": ["egypt"], "columns": ["name"]}
         res = requests.post(url, json=payload, timeout=15).json()
+        # هنا يتم سحب كل الأسهم المتاحة حياً، أي سهم جديد ينزل البورصة يقرأه المحرك فوراً
         return sorted(list(set([item['s'].split(':')[1] for item in res['data'] if not item['s'].split(':')[1].isdigit()])))
     except:
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC", "HRHO", "ESRS"]
@@ -128,7 +111,7 @@ def run_strategic_scan(date_key):
         try:
             status_text.text(f"تحليل متعدد الفريمات لـ: {sym}...")
             
-            # 1. تحليل الفريم الأسبوعي (Weekly)
+            # 1. تحليل الفريم الأسبوعي (Weekly) مع مهلة الانتظار لضمان جلب البيانات الصحيحة
             h_w = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_WEEK, timeout=10)
             w_rec = h_w.get_analysis().summary["RECOMMENDATION"]
             
@@ -141,11 +124,11 @@ def run_strategic_scan(date_key):
             h_h = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_HOUR, timeout=10)
             h_rec = h_h.get_analysis().summary["RECOMMENDATION"]
 
-            # تطبيق نظام تعدد الفريمات: صعود على الكل
+            # تطبيق نظام تعدد الفريمات المشروط: صعود على الكل
             if "BUY" in w_rec and "BUY" in d_rec and "BUY" in h_rec:
                 ind = analysis.indicators
                 
-                # خوارزمية تسجيل النقاط الأصلية
+                # خوارزمية تسجيل النقاط الأصلية وحساب الفنيات
                 score = 0
                 if "STRONG_BUY" in d_rec: score += 5
                 elif "BUY" in d_rec: score += 3
@@ -183,7 +166,7 @@ def run_strategic_scan(date_key):
     status_text.empty()
     return pd.DataFrame(results)
 
-# --- 5. وظائف العرض (كما هي في كودك الأصلي) ---
+# --- 6. وظائف العرض المرئي للبطاقات المالية كما هي بالملي ---
 def display_stock_card(row):
     with st.container():
         st.markdown(f"""
@@ -216,7 +199,7 @@ def display_stock_card(row):
         cols[3].metric("R2 (هدف)", f"{row['R2']:.2f}" if pd.notnull(row['R2']) else "N/A")
         st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
-# --- 6. منطق التشغيل ---
+# --- 7. منطق التمهيد والتشغيل النهائي وعرض البيانات المحفوظة ---
 st.write(f"📅 **تاريخ التقرير:** {today_key} | 🕒 **توقيت القاهرة:** {now_egypt.strftime('%H:%M')}")
 
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
@@ -250,21 +233,21 @@ if 'final_report' in st.session_state:
 st.markdown("""
 <div class="footer-box">
     <p style="font-weight:bold; color:#d4af37; letter-spacing:1px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
-    <p>تحذير مخاطر: المعلومات المقدمة هي تحليل رقمي فني ولا تعتبر توصية مباشرة بالشراء أو البيع.</p>
+    <p>تحذير مخاطر: المعلومات القدمة هي تحليل رقمي فني ولا تعتبر توصية مباشرة بالشراء أو البيع.</p>
     <p>© 2026 جميع الحقوق محفوظة</p>
 </div>
 """, unsafe_allow_html=True)
 
 # =========================================================================
-# 🧱 طوبة التسويق والأتمتة: مضافة بالكامل في نهاية الملف بدون لمس ما سبق 🧱
+# 🧱 طوبة الأتمتة والحفظ التلقائي: لتخزين بيانات اليوم واستدعائها تاني يوم 🧱
 # =========================================================================
 DB_FILE = f"report_{today_key}.csv"
 
-# 1. إذا قمت بالضغط على الزر وتولدت بيانات جديدة، يتم حفظها فوراً وتلقائياً في ملف اليوم
+# أ. حفظ التقرير فوراً في ملف CSV عند تشغيل الفحص وتحديث البيانات
 if 'final_report' in st.session_state and not st.session_state.final_report.empty:
     st.session_state.final_report.to_csv(DB_FILE, index=False)
 
-# 2. إذا دخل مستخدم والموقع فارغ، وكان هناك ملف محفوظ مسبقاً للجلسة، يتم تحميله وعرضه فوراً دون انتظار فحص جديد
+# ب. إذا دخلت تاني يوم أو فتحت الصفحة والمنصة فارغة، الكود هيسحب الملف المخزن ويعرضه في ثانية بدون انتظار
 if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
     st.session_state.final_report = pd.read_csv(DB_FILE)
     st.rerun()
