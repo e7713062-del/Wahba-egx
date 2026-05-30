@@ -25,10 +25,10 @@ def load_users():
             return df.to_dict(orient="records")
         except:
             pass
-    # 📝 هنا تم تعديل الباسورد الافتراضي الجديد لحساباتك
+    # 🟢 تم كتابة الباسورد 012700 هنا مباشرة في الكود لجميع الحسابات
     return [
-        {"username": "admin", "password": "🔑الباسورد_الجديد_هنا", "role": "admin", "status": "active", "start_date": today_key},
-        {"username": "مصطفى تامر", "password": "🔑الباسورد_الجديد_هنا", "role": "user", "status": "active", "start_date": today_key}
+        {"username": "admin", "password": "012700", "role": "admin", "status": "active", "start_date": today_key},
+        {"username": "مصطفى تامر", "password": "012700", "role": "user", "status": "active", "start_date": today_key}
     ]
 
 def save_users(users_list):
@@ -175,7 +175,6 @@ def fetch_egx_list(date_key):
         res = requests.post(url, json=payload, timeout=15).json()
         return sorted(list(set([item['s'].split(':')[1] for item in res['data'] if not item['s'].split(':')[1].isdigit()])))
     except:
-        # 📝 هنا تم تعديل قائمة الأسهم الاحتياطية التي تظهر لو السيرفر علّق
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC", "HRHO", "ESRS"]
 
 @st.cache_data(ttl=3600, show_spinner=False)
