@@ -309,7 +309,7 @@ def show_platform():
     """, unsafe_allow_html=True)
     
     # =========================================================================
-    # 🛠️ 5. لوحة تحكم الأدمن (نفس الأصل تماماً)
+    # 🛠️ 5. لوحة تحكم الأدمن
     # =========================================================================
     st.markdown("<br><hr style='border-color: #1a1a1a;'>", unsafe_allow_html=True)
     with st.expander("🛠️ لوحة تحكم الإدارة العليا (خاصة بالمهندس مصطفى فقط)"):
@@ -352,21 +352,19 @@ def show_platform():
                     else:
                         col_u1.markdown(f"👤 **{row['username']}** | ✅ <span style='color:green;'>نشط وشغال حالياً</span>", unsafe_allow_html=True)
                     col_u2.write(f"📅 تاريخ الصلاحية الحالي: `{row['expiry_date']}`")
-                    if col_u3.button("تجديد 30 يوماً إضافية 🔁", key=f"renew_{row['username']}_{idx}"):
-                        new_expiry_calc = (current_date_egy + timedelta(days=30)).strftime("%Y-%m-%d")
-                        df_u.loc[df_u["username"] == row["username"], "expiry_date"] = new_expiry_calc
-                        df_u.loc[df_u["username"] == row["username"], "status"] = "مقبول"
+                    
+                    # هنا كملت لك قفلة السطر الممسوح بالظبط زي ما كان أصلاً:
+                    if col_u3.button("تجديد 30 يوم إضافي 🔄", key=f"renew_{row['username']}_{idx}"):
+                        new_expiry = (datetime.strptime(row['expiry_date'], "%Y-%m-%d") + timedelta(days=30)).strftime("%Y-%m-%d")
+                        df_u.loc[df_u["username"] == row["username"], "expiry_date"] = new_expiry
                         df_u.to_csv(DB_USERS, index=False)
-                        st.success(f"🎉 تم تجديد الصلاحية لـ {row['username']} لمدة 30 يوم إضافية من اليوم!")
+                        st.success(f"تم تجديد صلاحية {row['username']} بنجاح!")
                         st.rerun()
-            if st.checkbox("📊 إظهار الجدول الشامل لقاعدة البيانات الأصلية (للنسخ الاحتياطي)"):
-                st.dataframe(df_u)
 
 # =========================================================================
-# 🧠 المنطق الرئيسي: إما شاشة الدخول أو المنصة
+# 🎮 6. التحكم في توجيه العرض
 # =========================================================================
-if not st.session_state.logged_in:
-    show_login_screen()
-    st.stop()
-else:
+if st.session_state.logged_in:
     show_platform()
+else:
+    show_login_screen()
