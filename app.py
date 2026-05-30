@@ -153,6 +153,15 @@ def display_stock_card(row):
 # =========================================================================
 # 🔐 3. شاشة تسجيل الدخول المستقلة (منفصلة تماماً عن المنصة)
 # =========================================================================
+        if st.button("🚀 دخول المنصة والاطلاع على التحليلات", key="btn_login_click"):
+            # إذا كتبت الحساب ده يدخلك علطول كأدمن
+            if login_user == "admin" and login_pass == "1234":
+                st.session_state.logged_in = True
+                st.session_state.current_user = "المهندس مصطفى"
+                st.session_state.expiry_display = "حساب دائم"
+                st.success("أهلاً بك يا باشمهندس!")
+                st.rerun()
+
 def show_login_screen():
     st.markdown("""
     <style>
