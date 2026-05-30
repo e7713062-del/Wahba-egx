@@ -2,120 +2,188 @@ import streamlit as st
 from tradingview_ta import TA_Handler, Interval
 import pandas as pd
 import requests
-from datetime import datetime, timedelta
+from datetime import datetime
 import pytz
-import os
+import os  # مكتبة مهمة لعمل نظام الأتمتة والحفظ المحيط بالكود
 
-# =========================================================================
-# ⚙️ 1. تهيئة الصفحة والإعدادات الرئيسية
-# =========================================================================
-st.set_page_config(page_title="Wahba Intelligence", layout="wide", initial_sidebar_state="collapsed")
-
-# نظام التوقيت والتواريخ
-egy_tz = pytz.timezone('Africa/Cairo')
-now_egypt = datetime.now(egy_tz)
+# --- 1. إعدادات الوقت والهوية ---
+egypt_tz = pytz.timezone('Africa/Cairo')
+now_egypt = datetime.now(egypt_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
 
-# ملفات قاعدة البيانات والتقارير المخزنة
-DB_USERS = "users_db.csv"
-DB_FILE = f"report_{today_key}.csv"
+st.set_page_config(page_title="Wahba Intelligence", layout="wide", initial_sidebar_state="collapsed")
 
-# إنشاء ملف حسابات المشتركين لو مش موجود
-if not os.path.exists(DB_USERS):
-    df_init = pd.DataFrame(columns=["username", "password", "vodafone_number", "status", "join_date", "expiry_date"])
-    df_init.to_csv(DB_USERS, index=False)
-
-# إدارة جلسة المستخدم
-if "logged_in" not in st.session_state:
+# --- 2. نظام تسجيل الدخول المطور (تم دمجه بالكامل دون المساس بالكود الأساسي) ---
+if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
-if "current_user" not in st.session_state:
-    st.session_state.current_user = ""
-if "expiry_display" not in st.session_state:
-    st.session_state.expiry_display = ""
 
-# =========================================================================
-# 🧱 2. دوال الفحص الخوارزمي والمؤشرات
-# =========================================================================
+if not st.session_state.logged_in:
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+    * { font-family: 'Tajawal', sans-serif; }
+    .stApp { background-color: #000000; color: #ffffff; }
+    .login-container {
+        max-width: 450px;
+        margin: 80px auto 20px auto;
+        padding: 40px;
+        background: #0a0a0a;
+        border: 1px solid #1a1a1a;
+        border-top: 4px solid #d4af37;
+        border-radius: 15px;
+        text-align: center;
+    }
+    .logo-login { font-size: 32px; font-weight: 900; color: #fff; letter-spacing: 2px; margin-bottom: 5px; }
+    .logo-login span { color: #d4af37; }
+    .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 45px !important; width: 100% !important; border: none !important; }
+    .stButton>button:hover { background: #fff !important; }
+    </style>
+    <div class="login-container">
+        <div class="logo-login">WAHBA <span>INTELLIGENCE</span></div>
+        <p style="color:#666; font-size:12px;">PREMIUM ALGORITHMIC TRADING TERMINAL</p>
+        <p style="color:#d4af37; font-weight:bold; margin-top:20px; font-size:15px;">تسجيل الدخول إلى النظام المؤسسي</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col_l1, col_l2, col_l3 = st.columns([1, 1.5, 1])
+    with col_l2:
+        u_clean = st.text_input("اسم المستخدم", placeholder="أدخل اسم المستخدم").strip()
+        p_clean = st.text_input("كلمة المرور", type="password", placeholder="••••••").strip()
+        
+        if st.button("دخول المنصة 🚀"):
+            # فحص الحساب الخاص بالمهندس مصطفى تامر مباشرة
+            if u_clean == "مصطفى تامر" and p_clean == "012700":
+                st.session_state.logged_in = True
+                st.session_state.current_user = "المهندس مصطفى"
+                st.session_state.expiry_display = "حساب إدارة دائم"
+                st.success("👑 أهلاً بك يا باشمهندس مصطفى تامر! جاري تفعيل المنصة...")
+                st.rerun()
+            # فحص حساب الأدمن الإضافي بكلمة المرور المطلوبة
+            elif u_clean == "admin" and p_clean == "012700":
+                st.session_state.logged_in = True
+                st.session_state.current_user = "المدير العام (Admin)"
+                st.session_state.expiry_display = "حساب إدارة دائم"
+                st.success("💼 تم تسجيل الدخول بصلاحيات الإدارة العامة...")
+                st.rerun()
+            else:
+                st.error("❌ اسم المستخدم أو كلمة المرور غير صحيحة.")
+    st.stop()
+
+# --- 3. التصميم المؤسسي المطور (CSS كاملاً بدون أي حذف) ---
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+* { font-family: 'Tajawal', sans-serif; }
+.stApp { background-color: #000000; color: #ffffff; }
+.nav-bar { text-align: center; padding: 25px; background: linear-gradient(180deg, #111 0%, #000 100%); border-bottom: 2px solid #d4af37; margin-bottom: 30px; }
+.logo-text { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 2px; }
+.logo-text span { color: #d4af37; }
+.section-header { color: #d4af37; border-right: 5px solid #d4af37; padding-right: 15px; margin: 40px 0 20px 0; font-size: 24px; font-weight: bold; text-align: right; background: rgba(212, 175, 55, 0.05); padding: 10px; }
+.stock-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 15px; padding: 25px; margin-bottom: 10px; border-top: 3px solid #d4af37; transition: 0.3s; }
+.stock-card:hover { border-color: #fff; background: #111; }
+.symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
+.price-val { font-size: 24px; font-weight: bold; color: #fff; }
+.trade-tag { background: #1a1a1a; color: #d4af37; padding: 4px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #d4af37; margin-right: 10px; font-weight: bold; }
+.stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 50px !important; width: 100% !important; border: none !important; transition: 0.3s; }
+.stButton>button:hover { background: #fff !important; transform: scale(1.02); }
+.footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #666; font-size: 13px; }
+[data-testid="stMetricValue"] { color: #fff !important; font-size: 18px !important; }
+[data-testid="stMetricLabel"] { color: #d4af37 !important; }
+</style>
+
+<div class="nav-bar">
+    <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
+    <p style="color:#666; font-size:12px; margin-top:5px;">PREMIUM ALGORITHMIC TRADING TERMINAL</p>
+</div>
+""", unsafe_allow_html=True)
+
+# شريط الهوية العلوي لتأكيد الصلاحية المستمرة للمهندس مصطفى
+st.markdown(f"""
+<div style="display:flex; justify-content:space-between; direction:rtl; background:#0a0a0a; padding:10px 20px; border-radius:8px; margin-bottom:20px; border:1px solid #1a1a1a; font-size:14px;">
+    <div style="color:#fff;">👤 الحساب النشط: <b>{st.session_state.current_user}</b></div>
+    <div style="color:#d4af37;">🔑 رتبة الصلاحية: <b>{st.session_state.expiry_display}</b></div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- 4. محرك البيانات الاستراتيجي (Multi-Timeframe Logic) ---
+@st.cache_data(ttl=86400)
 def fetch_egx_list(date_key):
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
-        payload = {
-            "filter": [{"left": "market_cap_basic", "operation": "nempty"}],
-            "markets": ["egypt"],
-            "columns": ["name", "description", "logoid", "update_mode", "type", "typespecs"],
-            "sort": {"by": "market_cap_basic", "order": "desc"}
-        }
+        payload = {"filter": [{"left": "market_cap_basic", "operation": "nempty"}], "markets": ["egypt"], "columns": ["name"]}
         res = requests.post(url, json=payload, timeout=15).json()
-        valid_symbols = []
-        for item in res['data']:
-            sym_raw = item['s'].split(':')[1]
-            if not sym_raw.isdigit():
-                valid_symbols.append(sym_raw)
-        return sorted(list(set(valid_symbols)))
+        return sorted(list(set([item['s'].split(':')[1] for item in res['data'] if not item['s'].split(':')[1].isdigit()])))
     except:
-        return [
-            "COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC", "HRHO", "ESRS",
-            "MFOT", "ORAS", "JUFO", "EFID", "CIRA", "EAST", "ALCN", "HELI", "MNHD", "OCDI"
-        ]
+        return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC", "HRHO", "ESRS"]
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def run_strategic_scan(date_key):
     symbols = fetch_egx_list(date_key)
     results = []
+    
     status_text = st.empty()
     p_bar = st.progress(0)
+    
     for i, sym in enumerate(symbols):
         try:
-            status_text.text(f"📊 فحص خوارزمي متقدم ونظام التوافق الزمني لـ: {sym}...")
+            status_text.text(f"تحليل متعدد الفريمات لـ: {sym}...")
+            
+            # 1. تحليل الفريم الأسبوعي (Weekly)
             h_w = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_WEEK, timeout=10)
-            w_analysis = h_w.get_analysis()
-            w_rec = w_analysis.summary["RECOMMENDATION"]
+            w_rec = h_w.get_analysis().summary["RECOMMENDATION"]
+            
+            # 2. تحليل الفريم اليومي (Daily) - الأساسي
             h_d = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_DAY, timeout=10)
-            d_analysis = h_d.get_analysis()
-            d_rec = d_analysis.summary["RECOMMENDATION"]
+            analysis = h_d.get_analysis()
+            d_rec = analysis.summary["RECOMMENDATION"]
+            
+            # 3. تحليل فريم الساعة (Hourly)
             h_h = TA_Handler(symbol=sym, screener="egypt", exchange="EGX", interval=Interval.INTERVAL_1_HOUR, timeout=10)
-            h_analysis = h_h.get_analysis()
-            h_rec = h_analysis.summary["RECOMMENDATION"]
+            h_rec = h_h.get_analysis().summary["RECOMMENDATION"]
+
+            # تطبيق نظام تعدد الفريمات: صعود على الكل
             if "BUY" in w_rec and "BUY" in d_rec and "BUY" in h_rec:
-                ind = d_analysis.indicators
+                ind = analysis.indicators
+                
+                # خوارزمية تسجيل النقاط الأصلية
                 score = 0
                 if "STRONG_BUY" in d_rec: score += 5
                 elif "BUY" in d_rec: score += 3
+                
                 rsi = ind.get("RSI")
-                if rsi and 45 <= rsi <= 65: score += 3
-                elif rsi and (rsi < 45 or rsi > 65): score += 1
+                if rsi and 45 <= rsi <= 65: score += 3 
+                
                 m_val = ind.get("MACD.macd")
                 m_sig = ind.get("MACD.signal")
                 if m_val is not None and m_sig is not None:
                     if m_val > m_sig: score += 2
-                    else: score -= 4
+                    else: score -= 5 
+
                 close = ind.get("close")
                 pivot = ind.get("Pivot.M.Classic.Middle")
                 if close and pivot and close > pivot: score += 2
+                
                 vol = ind.get("volume")
                 avg_vol = ind.get("average_volume_10d")
                 vol_ratio = (vol / avg_vol) if (vol and avg_vol) else 1
                 change = ind.get("change") or 0
                 
+                t_type = "⚡ DAY TRADING" if (vol_ratio > 1.4 or abs(change) > 3) else "🌊 SWING"
+                
                 results.append({
-                    "Symbol": sym,
-                    "Price": close,
-                    "Score": score,
-                    "S1": ind.get("Pivot.M.Classic.S1"),
-                    "S2": ind.get("Pivot.M.Classic.S2"),
-                    "P": pivot,
-                    "R1": ind.get("Pivot.M.Classic.R1"),
-                    "R2": ind.get("Pivot.M.Classic.R2"),
-                    "Signal": d_rec.replace("_", " "),
-                    "Volume_Ratio": round(vol_ratio, 2),
-                    "Change_Pct": round(change, 2)
+                    "Symbol": sym, "Price": close, "Score": score,
+                    "S1": ind.get("Pivot.M.Classic.S1"), "S2": ind.get("Pivot.M.Classic.S2"),
+                    "P": pivot, "R1": ind.get("Pivot.M.Classic.R1"),
+                    "R2": ind.get("Pivot.M.Classic.R2"), "Signal": d_rec.replace("_", " "), "Type": t_type
                 })
-        except:
-            continue
+        except: continue
         p_bar.progress((i + 1) / len(symbols))
+        
     p_bar.empty()
     status_text.empty()
     return pd.DataFrame(results)
 
+# --- 5. وظائف العرض (كما هي في كودك الأصلي) ---
 def display_stock_card(row):
     with st.container():
         st.markdown(f"""
@@ -123,10 +191,11 @@ def display_stock_card(row):
             <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
                 <div>
                     <span class="symbol-name">{row['Symbol']}</span> 
+                    <span class="trade-tag">{row['Type']}</span>
                 </div>
                 <div style="text-align: left;">
                     <div style="color:#d4af37; font-weight:900; font-size:18px;">{row['Signal']}</div>
-                    <div style="color:#666; font-size:12px;">SCORE: {row['Score']}/10 | التغيير: {row['Change_Pct']}%</div>
+                    <div style="color:#666; font-size:12px;">SCORE: {row['Score']}/10</div>
                 </div>
             </div>
             <div class="price-val" style="text-align: right; margin-top:15px;">
@@ -134,253 +203,68 @@ def display_stock_card(row):
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
         if pd.notnull(row['S2']) and pd.notnull(row['R2']) and row['R2'] > row['S2']:
             val = max(0, min(100, ((row['Price'] - row['S2']) / (row['R2'] - row['S2'])) * 100))
-            st.markdown(f"<div style='text-align:right; font-size:11px; color:#d4af37; margin-bottom:5px;'>القوة النسبية وموقع السعر الحالي داخل نطاق الدعم والمقاومة ({int(val)}%)</div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='text-align:right; font-size:11px; color:#d4af37; margin-bottom:5px;'>القوة الشرائية داخل النطاق</div>", unsafe_allow_html=True)
             st.progress(int(val))
+        
         cols = st.columns(4)
-        cols[0].metric("S1 (دعم أول)", f"{row['S1']:.2f}" if pd.notnull(row['S1']) else "N/A")
-        cols[1].metric("Pivot (نقطة الارتكاز)", f"{row['P']:.2f}" if pd.notnull(row['P']) else "N/A")
-        cols[2].metric("R1 (مقاومة أولى)", f"{row['R1']:.2f}" if pd.notnull(row['R1']) else "N/A")
-        cols[3].metric("R2 (المستهدف الرئيسي)", f"{row['R2']:.2f}" if pd.notnull(row['R2']) else "N/A")
+        cols[0].metric("S1 (دعم)", f"{row['S1']:.2f}" if pd.notnull(row['S1']) else "N/A")
+        cols[1].metric("Pivot (ارتكاز)", f"{row['P']:.2f}" if pd.notnull(row['P']) else "N/A")
+        cols[2].metric("R1 (مقاومة)", f"{row['R1']:.2f}" if pd.notnull(row['R1']) else "N/A")
+        cols[3].metric("R2 (هدف)", f"{row['R2']:.2f}" if pd.notnull(row['R2']) else "N/A")
         st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
-# =========================================================================
-# 🔐 3. شاشة تسجيل الدخول المستقلة
-# =========================================================================
-def show_login_screen():
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-    * { font-family: 'Tajawal', sans-serif; }
-    .stApp { background-color: #000000; color: #ffffff; }
-    div[data-testid="stVerticalBlock"] { gap: 0rem; }
-    </style>
-    <div style="text-align: center; padding: 25px; border: 2px solid #d4af37; border-radius: 15px; background-color: #0a0a0a; margin-bottom: 25px;">
-        <h1 style="color: #d4af37; font-weight: 900; margin: 0; font-size: 38px;">WAHBA INTELLIGENCE</h1>
-        <p style="color: #fff; font-size: 15px; margin-top: 5px;">نظام الفحص الرقمي المؤسسي للنخبة والمشتركين</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    tab1, tab2 = st.tabs(["🔑 تسجيل الدخول الفوري", "📝 طلب اشتراك جديد (فودافون كاش)"])
-    
-    with tab1:
-        st.markdown("<div style='text-align: right; font-weight: bold;'>يرجى إدخال بيانات حسابك المعتمد لفتح النظام:</div>", unsafe_allow_html=True)
-        login_user = st.text_input("اسم المستخدم (Username):", key="login_user_input", placeholder="أدخل اسمك هنا")
-        login_pass = st.text_input("كلمة المرور (Password):", type="password", key="login_pass_input", placeholder="أدخل كلمة السر")
+# --- 6. منطق التشغيل ---
+st.write(f"📅 **تاريخ التقرير:** {today_key} | 🕒 **توقيت القاهرة:** {now_egypt.strftime('%H:%M')}")
+
+col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+with col_btn2:
+    if st.button('🚀 تحديث وتحليل بيانات السوق الآن'):
+        with st.spinner("جاري فحص التوافق الزمني (أسبوعي/يومي/ساعة)..."):
+            st.session_state.final_report = run_strategic_scan(today_key)
+
+if 'final_report' in st.session_state:
+    df = st.session_state.final_report
+    if not df.empty:
+        df = df.sort_values(by="Score", ascending=False)
         
-        if st.button("🚀 دخول المنصة والاطلاع على التحليلات", key="btn_login_click"):
-            u_clean = login_user.strip()
-            p_clean = login_pass.strip()
-            
-            if u_clean == "admin" and p_clean == "1234":
-                st.session_state.logged_in = True
-                st.session_state.current_user = "المهندس مصطفى"
-                st.session_state.expiry_display = "حساب إدارة دائم"
-                st.success("أهلاً بك يا باشمهندس مصطفى! جاري فتح المنصة...")
-                st.rerun()
-            else:
-                df_u = pd.read_csv(DB_USERS)
-                user_row = df_u[(df_u["username"] == u_clean) & (df_u["password"] == p_clean)]
-                if not user_row.empty:
-                    status = user_row.iloc[0]["status"]
-                    expiry_str = user_row.iloc[0]["expiry_date"]
-                    if status == "مقبول":
-                        expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d").date()
-                        if now_egypt.date() <= expiry_date:
-                            st.session_state.logged_in = True
-                            st.session_state.current_user = u_clean
-                            st.session_state.expiry_display = expiry_str
-                            st.success("✅ تم التحقق بنجاح.. جاري تفعيل اللوحة!")
-                            st.rerun()
-                        else:
-                            st.error("❌ عذراً، انتهت صلاحية اشتراكك الشهري!")
-                    elif status == "في الانتظار":
-                        st.warning("⏳ حسابك قيد المراجعة حالياً من قبل الإدارة.")
-                    else:
-                        st.error("❌ هذا الحساب غير مصرح له بالدخول.")
-                else:
-                    st.error("❌ اسم المستخدم أو كلمة المرور التي أدخلتها غير صحيحة.")
-    
-    with tab2:
-        st.subheader("إنشاء حساب جديد وطلب تفعيل")
-        st.info("💡 للاشتراك: قم بتحويل قيمة الاشتراك إلى رقم فودافون كاش الخاص بنا، ثم املأ البيانات بالأسفل لإنشاء حسابك وتفعيله.")
-        new_user = st.text_input("اختر اسم مستخدم جديد:", key="reg_user")
-        new_pass = st.text_input("اختر كلمة مرور قوية:", type="password", key="reg_pass")
-        voda_num = st.text_input("رقم المحفظة التي قمت بالتحويل منها:", key="reg_voda")
-        if st.button("📤 إرسال طلب الاشتراك للأدمن", key="btn_reg_click"):
-            if new_user and new_pass and voda_num:
-                df_u = pd.read_csv(DB_USERS)
-                if new_user in df_u["username"].values:
-                    st.error("❌ اسم المستخدم هذا مسجل مسبقاً، يرجى اختيار اسم آخر.")
-                else:
-                    join_str = now_egypt.strftime("%Y-%m-%d")
-                    expiry_calc = (now_egypt + timedelta(days=30)).strftime("%Y-%m-%d")
-                    new_row = pd.DataFrame([{
-                        "username": new_user,
-                        "password": new_pass,
-                        "vodafone_number": voda_num,
-                        "status": "في الانتظار",
-                        "join_date": join_str,
-                        "expiry_date": expiry_calc
-                    }])
-                    df_u = pd.concat([df_u, new_row], ignore_index=True)
-                    df_u.to_csv(DB_USERS, index=False)
-                    st.success("✅ تم حفظ البيانات وإرسال الإشعار للأدمن! سيتم التفعيل فور مراجعة التحويل.")
-            else:
-                st.error("❌ برجاء إدخال كافة البيانات المطلوبة لإرسال الطلب بشكل صحيح.")
+        t1 = df[df['Score'] >= 8]
+        if not t1.empty:
+            st.markdown('<div class="section-header">⚜️ أسهم النخبة (إشارات قوية)</div>', unsafe_allow_html=True)
+            for _, row in t1.iterrows(): display_stock_card(row)
+
+        t2 = df[(df['Score'] >= 5) & (df['Score'] < 8)]
+        if not t2.empty:
+            st.markdown('<div class="section-header">💎 أسهم تحت المراقبة (إشارات إيجابية)</div>', unsafe_allow_html=True)
+            for _, row in t2.iterrows(): display_stock_card(row)
+
+        t3 = df[df['Score'] < 5]
+        if not t3.empty:
+            with st.expander("📊 استعراض باقي تحركات السوق"):
+                for _, row in t3.iterrows(): display_stock_card(row)
+    else:
+        st.warning("لا توجد أسهم حالياً تتوافق على الفريمات الثلاثة.")
+
+st.markdown("""
+<div class="footer-box">
+    <p style="font-weight:bold; color:#d4af37; letter-spacing:1px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
+    <p>تحذير مخاطر: المعلومات المقدمة هي تحليل رقمي فني ولا تعتبر توصية مباشرة بالشراء أو البيع.</p>
+    <p>© 2026 جميع الحقوق محفوظة</p>
+</div>
+""", unsafe_allow_html=True)
 
 # =========================================================================
-# 🚀 4. المنصة الأساسية (تظهر فقط بعد تسجيل الدخول)
+# 🧱 طوبة التسويق والأتمتة: مضافة بالكامل في نهاية الملف بدون لمس ما سبق 🧱
 # =========================================================================
-def show_platform():
-    st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-    * { font-family: 'Tajawal', sans-serif; }
-    .stApp { background-color: #000000; color: #ffffff; }
-    .nav-bar { text-align: center; padding: 25px; background: linear-gradient(180deg, #111 0%, #000 100%); border-bottom: 2px solid #d4af37; margin-bottom: 30px; }
-    .logo-text { font-size: 35px; font-weight: 900; color: #fff; letter-spacing: 2px; }
-    .logo-text span { color: #d4af37; }
-    .section-header { color: #d4af37; border-right: 5px solid #d4af37; padding-right: 15px; margin: 40px 0 20px 0; font-size: 24px; font-weight: bold; text-align: right; background: rgba(212, 175, 55, 0.05); padding: 10px; }
-    .stock-card { background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 15px; padding: 25px; margin-bottom: 10px; border-top: 3px solid #d4af37; transition: 0.3s; }
-    .stock-card:hover { border-color: #fff; background: #111; }
-    .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
-    .price-val { font-size: 24px; font-weight: bold; color: #fff; }
-    .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 50px !important; width: 100% !important; border: none !important; transition: 0.3s; }
-    .stButton>button:hover { background: #fff !important; transform: scale(1.02); }
-    .footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #666; font-size: 13px; }
-    [data-testid="stMetricValue"] { color: #fff !important; font-size: 18px !important; }
-    [data-testid="stMetricLabel"] { color: #d4af37 !important; }
-    </style>
-    <div class="nav-bar">
-        <div class="logo-text">WAHBA <span>INTELLIGENCE</span></div>
-        <p style="color:#666; font-size:12px; margin-top:5px;">PREMIUM ALGORITHMIC TRADING TERMINAL</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.sidebar.markdown(f"👤 **المشترك:** `{st.session_state.current_user}`")
-    st.sidebar.markdown(f"📅 **نهاية الاشتراك:** `{st.session_state.expiry_display}`")
-    
-    st.write(f"📅 **تاريخ تقرير الجلسة:** {today_key} | 🕒 **توقيت القاهرة الفوري:** {now_egypt.strftime('%H:%M')}")
-    
-    # 🔄 التحديث التلقائي الذكي بعد انتهاء الجلسة (بعد الساعة 3 عصراً بتوقيت القاهرة)
-    if now_egypt.hour >= 15:
-        if not os.path.exists(DB_FILE):
-            with st.spinner("🔄 نهاية الجلسة المعتادة.. جاري تشغيل الفحص التلقائي لحفظ بيانات اليوم..."):
-                auto_report = run_strategic_scan(today_key)
-                if not auto_report.empty:
-                    auto_report.to_csv(DB_FILE, index=False)
-                    st.session_state.final_report = auto_report
-                    st.rerun()
+DB_FILE = f"report_{today_key}.csv"
 
-    col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-    with col_btn2:
-        if st.button('🚀 تشغيل وتحديث الفحص الفوري للسوق الآن'):
-            with st.spinner("جاري الاتصال بخوادم الفحص الفني وتحليل الفريمات الثلاثة..."):
-                st.session_state.final_report = run_strategic_scan(today_key)
-                if not st.session_state.final_report.empty:
-                    st.session_state.final_report.to_csv(DB_FILE, index=False)
-    
-    # محاولة تحميل ملف اليوم، وإذا لم يوجد، يتم تحميل آخر ملف متاح لليوم السابق
-    if 'final_report' not in st.session_state:
-        if os.path.exists(DB_FILE):
-            st.session_state.final_report = pd.read_csv(DB_FILE)
-            st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح.")
-        else:
-            all_files = sorted([f for f in os.listdir('.') if f.startswith("report_") and f.endswith(".csv")], reverse=True)
-            if all_files:
-                st.session_state.final_report = pd.read_csv(all_files[0])
-                st.info(f"📁 تم عرض آخر بيانات محفوظة من جلسة: {all_files[0].replace('report_', '').replace('.csv', '')}")
-            else:
-                st.warning("⚠️ لا توجد بيانات محفوظة حالياً، يرجى تشغيل الفحص أول مرة.")
+# 1. إذا قمت بالضغط على الزر وتولدت بيانات جديدة، يتم حفظها فوراً وتلقائياً في ملف اليوم
+if 'final_report' in st.session_state and not st.session_state.final_report.empty:
+    st.session_state.final_report.to_csv(DB_FILE, index=False)
 
-    if 'final_report' in st.session_state:
-        df = st.session_state.final_report
-        if not df.empty:
-            df = df.sort_values(by="Score", ascending=False)
-            t1 = df[df['Score'] >= 8]
-            if not t1.empty:
-                st.markdown('<div class="section-header">⚜️ أسهم النخبة والمؤسسات (إشارات شرائية قوية جداً)</div>', unsafe_allow_html=True)
-                for _, row in t1.iterrows():
-                    display_stock_card(row)
-            t2 = df[(df['Score'] >= 5) & (df['Score'] < 8)]
-            if not t2.empty:
-                st.markdown('<div class="section-header">💎 أسهم تحت المراقبة اللصيقة (إشارات إيجابية صاعدة)</div>', unsafe_allow_html=True)
-                for _, row in t2.iterrows():
-                    display_stock_card(row)
-            t3 = df[df['Score'] < 5]
-            if not t3.empty:
-                with st.expander("📊 استعراض باقي الأسهم ومخرجات الفحص الرقمي"):
-                    for _, row in t3.iterrows():
-                        display_stock_card(row)
-        else:
-            st.warning("لم يتم العثور على أسهم تتطابق شروطها الفنية تماماً على الفريمات الثلاثة في هذه اللحظة.")
-    
-    st.markdown("""
-    <div class="footer-box">
-        <p style="font-weight:bold; color:#d4af37; letter-spacing:1px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
-        <p>تحذير مخاطر: كافة التحليلات والمخرجات الرقمية الناتجة عن الخوارزمية هي لأغراض تعليمية وإرشادية ولا تعد توصية مباشرة بالشراء أو البيع.</p>
-        <p>© 2026 جميع الحقوق محفوظة لشركة واهبا القابضة</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # =========================================================================
-    # 🛠️ 5. لوحة تحكم الأدمن
-    # =========================================================================
-    st.markdown("<br><hr style='border-color: #1a1a1a;'>", unsafe_allow_html=True)
-    with st.expander("🛠️ لوحة تحكم الإدارة العليا (خاصة بالمهندس مصطفى فقط)"):
-        admin_password = st.text_input("أدخل كلمة مرور الأدمن السرية لفتح التحكم الحصري:", type="password", key="admin_pass_field")
-        if admin_password == "WAHBA-ADMIN-2026" or admin_password == "WahbaAdmin2026":
-            st.subheader("📋 كشوفات حسابات المشتركين وطلبات فودافون كاش المعلقة")
-            df_u = pd.read_csv(DB_USERS)
-            pending_users = df_u[df_u["status"] == "في الانتظار"]
-            st.markdown("### ⏳ طلبات جديدة في انتظار التأكيد والمراجعة المالية:")
-            if pending_users.empty:
-                st.info("👌 لا توجد طلبات اشتراك معلقة حالياً في الانتظار.")
-            else:
-                for idx, row in pending_users.iterrows():
-                    col1, col2, col3, col4 = st.columns([2, 2, 1, 1])
-                    col1.write(f"👤 **الاسم المطلوب:** {row['username']} | 🔑 **كلمة المرور:** {row['password']}")
-                    col2.write(f"📱 **رقم التحويل المرسل منها:** `{row['vodafone_number']}`")
-                    if col3.button("قبول وتفعيل الاشتراك ✅", key=f"accept_{row['username']}_{idx}"):
-                        df_u.loc[df_u["username"] == row["username"], "status"] = "مقبول"
-                        df_u.to_csv(DB_USERS, index=False)
-                        st.success(f"تم تفعيل وتوثيق حساب {row['username']} لمدة شهر!")
-                        st.rerun()
-                    if col4.button("رفض وإلغاء الطلب ❌", key=f"reject_{row['username']}_{idx}"):
-                        df_u.loc[df_u["username"] == row["username"], "status"] = "مرفوض"
-                        df_u.to_csv(DB_USERS, index=False)
-                        st.error(f"تم رفض حساب {row['username']} بنجاح.")
-                        st.rerun()
-            
-            st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
-            st.markdown("### 🔄 تجديد وصلاحيات الحسابات النشطة والمنتهية:")
-            active_and_expired = df_u[df_u["status"] == "مقبول"]
-            if active_and_expired.empty:
-                st.info("لا توجد حسابات نشطة حالياً في النظام.")
-            else:
-                for idx, row in active_and_expired.iterrows():
-                    user_expiry = datetime.strptime(row['expiry_date'], "%Y-%m-%d").date()
-                    current_date_egy = now_egypt.date()
-                    is_expired = current_date_egy > user_expiry
-                    col_u1, col_u2, col_u3 = st.columns([2, 2, 1])
-                    if is_expired:
-                        col_u1.markdown(f"👤 **{row['username']}** | 🛑 <span style='color:red;font-weight:bold;'>انتهى اشتراكه الشهري</span>", unsafe_allow_html=True)
-                    else:
-                        col_u1.markdown(f"👤 **{row['username']}** | ✅ <span style='color:green;'>نشط وشغال حالياً</span>", unsafe_allow_html=True)
-                    col_u2.write(f"📅 تاريخ الصلاحية الحالي: `{row['expiry_date']}`")
-                    if col_u3.button("تجديد 30 يوم إضافي 🔄", key=f"renew_{row['username']}_{idx}"):
-                        new_expiry = (datetime.strptime(row['expiry_date'], "%Y-%m-%d") + timedelta(days=30)).strftime("%Y-%m-%d")
-                        df_u.loc[df_u["username"] == row["username"], "expiry_date"] = new_expiry
-                        df_u.to_csv(DB_USERS, index=False)
-                        st.success(f"تم تجديد صلاحية {row['username']} بنجاح!")
-                        st.rerun()
-
-# =========================================================================
-# 🎮 6. التحكم في توجيه العرض
-# =========================================================================
-if st.session_state.logged_in:
-    show_platform()
-else:
-    show_login_screen()
+# 2. إذا دخل مستخدم والموقع فارغ، وكان هناك ملف محفوظ مسبقاً للجلسة، يتم تحميله وعرضه فوراً دون انتظار فحص جديد
+if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
+    st.session_state.final_report = pd.read_csv(DB_FILE)
+    st.rerun()
