@@ -6,6 +6,9 @@ from datetime import datetime, timedelta
 import pytz
 import os
 
+# تهيئة الصفحة كأول سطر في الكود
+st.set_page_config(page_title="Wahba Intelligence", layout="wide", initial_sidebar_state="collapsed")
+
 # =========================================================================
 # 🧱 1. طوبة جدار الحماية ونظام الاشتراكات التلقائي (فودافون كاش)
 # =========================================================================
@@ -23,10 +26,8 @@ if "logged_in" not in st.session_state:
 if "current_user" not in st.session_state:
     st.session_state.current_user = ""
 
-# شاشة الدخول وحجب المنصة عن غير المشتركين
+# شاشة الدخول وحجب المنصة بالكامل
 if not st.session_state.logged_in:
-    st.set_page_config(page_title="Wahba Intelligence - دخول المشتركين", layout="centered")
-    
     st.markdown("""
     <div style="text-align: center; padding: 20px; border: 2px solid #d4af37; border-radius: 15px; background-color: #0a0a0a;">
         <h2 style="color: #d4af37; font-weight: 900;">👑 WAHBA INTELLIGENCE</h2>
@@ -97,23 +98,19 @@ if not st.session_state.logged_in:
                     st.success("✅ تم إرسال طلبك بنجاح! سيقوم الأدمن بمراجعة التحويل وتفعيل حسابك خلال دقائق.")
             else:
                 st.error("❌ يرجى ملء جميع الحقول لإرسال الطلب.")
-    st.stop()
+    st.stop() # قفل أمني مستحيل تجاوزه بدون تسجيل دخول ناجح
 
 # شريط جانبي للمشترك يوضح بياناته
 st.sidebar.markdown(f"👤 **المشترك الحالي:** `{st.session_state.current_user}`")
-st.sidebar.markdown(f"📅 **ينتهي اشتراكك في:** `{st.session_state.expiry_display}`")
+st.sidebar.markdown(f"📅 **ينتهي اشتراكك in:** `{st.session_state.expiry_display}`")
 
 
 # =========================================================================
-# 🔓 2. كود واهبا الأصلي والكامل للأسهم المصرية (تم إزالة الكاش ليعمل لايف فوراً)
+# 🔓 2. كود واهبا الأصلي والكامل للأسهم المصرية (لا يظهر إلا للمشتركين)
 # =========================================================================
 now_egypt = datetime.now(egy_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
-
-# ملف الماركتينج لحفظ البيانات لليوم التالي تلقائياً
 DB_FILE = f"report_{today_key}.csv"
-
-st.set_page_config(page_title="Wahba Intelligence", layout="wide", initial_sidebar_state="collapsed")
 
 # التصميم المؤسسي المطور (CSS كاملاً)
 st.markdown("""
@@ -143,7 +140,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# سحب قائمة الأسهم بدون كاش (لايف)
 def fetch_egx_list(date_key):
     try:
         url = "https://scanner.tradingview.com/egypt/scan"
@@ -153,7 +149,6 @@ def fetch_egx_list(date_key):
     except:
         return ["COMI", "FWRY", "TMGH", "SWDY", "EKHO", "ABUK", "ETEL", "AMOC", "HRHO", "ESRS"]
 
-# الفحص الاستراتيجي الكامل بدون كاش (هيقوم بالفحص الفعلي سهم سهم كل مرة تضغط الزر)
 def run_strategic_scan(date_key):
     symbols = fetch_egx_list(date_key)
     results = []
@@ -251,14 +246,13 @@ with col_btn2:
     if st.button('🚀 تحديث وتحليل بيانات السوق الآن'):
         with st.spinner("جاري فحص التوافق الزمني (أسبوعي/يومي/ساعة)..."):
             st.session_state.final_report = run_strategic_scan(today_key)
-            # [طوبة الماركتينج المباشرة]: حفظ التقرير في CSV لليوم التالي فوراً
             if not st.session_state.final_report.empty:
                 st.session_state.final_report.to_csv(DB_FILE, index=False)
 
-# [طوبة الماركتينج التلقائية]: قراءة تقرير الجلسة المحفوظ فوراً لزوار المنصة المشتركين
+# 🔒 [طوبة الماركتينج التلقائية المحمية]: لا تعمل إلا للمسجلين دخولهم فقط
 if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
     st.session_state.final_report = pd.read_csv(DB_FILE)
-    st.success("📊 تم تحميل تقرير الأسهم المصرية الجاهز تلقائياً بنجاح (وضع الماركتينج).")
+    st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح المشترك.")
 
 if 'final_report' in st.session_state:
     df = st.session_state.final_report
