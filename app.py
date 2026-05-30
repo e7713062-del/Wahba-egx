@@ -20,13 +20,15 @@ USER_DB_FILE = "users_db.csv"
 
 def load_users():
     if os.path.exists(USER_DB_FILE):
-        df = pd.read_csv(USER_DB_FILE)
-        return df.to_dict(orient="records")
-    else:
-        return [
-            {"username": "admin", "password": "012700", "role": "admin", "status": "active", "start_date": today_key},
-            {"username": "مصطفى تامر", "password": "012700", "role": "user", "status": "active", "start_date": today_key}
-        ]
+        try:
+            df = pd.read_csv(USER_DB_FILE)
+            return df.to_dict(orient="records")
+        except:
+            pass
+    return [
+        {"username": "admin", "password": "012700", "role": "admin", "status": "active", "start_date": today_key},
+        {"username": "مصطفى تامر", "password": "012700", "role": "user", "status": "active", "start_date": today_key}
+    ]
 
 def save_users(users_list):
     pd.DataFrame(users_list).to_csv(USER_DB_FILE, index=False)
@@ -34,11 +36,11 @@ def save_users(users_list):
 if 'users' not in st.session_state:
     st.session_state.users = load_users()
 
-# فحص الـ 30 يوم التلقائي لطرد من انتهى اشتراكه
+# فحص الـ 30 يوم التلقائي - تم استخدام .get لمنع KeyError نهائياً إذا كانت الداتا قديمة
 for u in st.session_state.users:
-    if u['role'] != 'admin' and u['status'] == 'active':
+    if u.get('role', 'user') != 'admin' and u.get('status', 'pending') == 'active':
         try:
-            start_dt = datetime.strptime(u['start_date'], "%Y-%m-%d")
+            start_dt = datetime.strptime(u.get('start_date', today_key), "%Y-%m-%d")
             days_passed = (datetime.now().date() - start_dt.date()).days
             if days_passed >= 30:
                 u['status'] = 'expired'
@@ -74,15 +76,15 @@ if not st.session_state.logged_in:
         u_clean = st.text_input("اسم المستخدم", placeholder="أدخل اسم الحساب", key="login_user").strip()
         p_clean = st.text_input("كلمة المرور", type="password", placeholder="••••••", key="login_pass").strip()
         if st.button("دخول المنصة 🚀", key="login_btn"):
-            user_found = next((u for u in st.session_state.users if u['username'] == u_clean and u['password'] == p_clean), None)
+            user_found = next((u for u in st.session_state.users if u.get('username') == u_clean and u.get('password') == p_clean), None)
             if user_found:
-                if user_found['status'] == 'active':
+                if user_found.get('status', 'pending') == 'active':
                     st.session_state.logged_in = True
-                    st.session_state.current_user = user_found['username']
-                    st.session_state.user_role = user_found['role']
+                    st.session_state.current_user = user_found.get('username')
+                    st.session_state.user_role = user_found.get('role', 'user')
                     st.success("👑 تم التحقق بنجاح!")
                     st.rerun()
-                elif user_found['status'] == 'expired':
+                elif user_found.get('status', 'pending') == 'expired':
                     st.error("❌ انتهت صلاحية اشتراكك الشهري (30 يوم). يرجى التواصل مع الإدارة للتجديد.")
                 else:
                     st.warning("⚠️ حسابك في انتظار التفعيل من الإدارة.")
@@ -93,7 +95,7 @@ if not st.session_state.logged_in:
         new_pass = st.text_input("اختر كلمة مرور", type="password", placeholder="••••••", key="reg_pass").strip()
         if st.button("إرسال طلب التفعيل 📨", key="reg_btn"):
             if new_user and new_pass:
-                if any(u for u in st.session_state.users if u['username'] == new_user):
+                if any(u for u in st.session_state.users if u.get('username') == new_user):
                     st.error("❌ الاسم موجود بالفعل.")
                 else:
                     st.session_state.users.append({"username": new_user, "password": new_pass, "role": "user", "status": "pending", "start_date": today_key})
@@ -108,20 +110,20 @@ if st.session_state.user_role == "admin":
     st.markdown("<div style='background:#111; padding:15px; border-radius:10px; border:1px solid #d4af37; margin-bottom:20px;'>", unsafe_allow_html=True)
     st.subheader("💼 لوحة تحكم الإدارة والاشتراكات الشهرية")
     for idx, row in pd.DataFrame(st.session_state.users).iterrows():
-        if row['username'] != 'admin':
+        if row.get('username') != 'admin':
             col_u1, col_u2, col_u3 = st.columns([2, 1, 1])
-            col_u1.write(f"👤 **المستخدم:** {row['username']} | 📅 **بدء الاشتراك:** {row['start_date']}")
-            col_u2.write(f"الحالة: {'🟢 نشط' if row['status']=='active' else '❌ منتهي' if row['status']=='expired' else '🔴 قيد الانتظار'}")
-            if row['status'] == 'pending':
+            col_u1.write(f"👤 **المستخدم:** {row.get('username')} | 📅 **بدء الاشتراك:** {row.get('start_date', today_key)}")
+            col_u2.write(f"الحالة: {'🟢 نشط' if row.get('status')=='active' else '❌ منتهي' if row.get('status')=='expired' else '🔴 قيد الانتظار'}")
+            if row.get('status', 'pending') == 'pending':
                 if col_u3.button("✅ قبول وتفعيل", key=f"acc_{idx}"):
                     st.session_state.users[idx]['status'] = 'active'
                     st.session_state.users[idx]['start_date'] = today_key
                     save_users(st.session_state.users)
                     st.rerun()
-            elif row['status'] == 'expired':
+            elif row.get('status', 'pending') == 'expired':
                 if col_u3.button("🔄 تجديد 30 يوم", key=f"ren_{idx}"):
                     st.session_state.users[idx]['status'] = 'active'
-                    st.session_state.users[idx]['start_date'] = today_key # تصفير العداد لـ 30 يوم جديدة
+                    st.session_state.users[idx]['start_date'] = today_key 
                     save_users(st.session_state.users)
                     st.rerun()
             else:
@@ -275,7 +277,6 @@ def display_stock_card(row):
         st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
 # --- 5. منطق التشغيل ---
-# تم إضافة اسم المشترك فقط بجانب التاريخ للاحترافية
 st.write(f"📅 **تاريخ التقرير:** {today_key} | 🕒 **توقيت القاهرة:** {now_egypt.strftime('%H:%M')} | 👤 **المشترك:** {st.session_state.current_user}")
 
 col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
