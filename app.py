@@ -95,10 +95,7 @@ def run_strategic_scan(date_key):
                 avg_vol = ind.get("average_volume_10d")
                 vol_ratio = (vol / avg_vol) if (vol and avg_vol) else 1
                 change = ind.get("change") or 0
-                if vol_ratio > 1.4 or abs(change) > 3:
-                    t_type = "⚡ DAY TRADING (تداول سريع)"
-                else:
-                    t_type = "🌊 SWING (تداول موجي)"
+                
                 results.append({
                     "Symbol": sym,
                     "Price": close,
@@ -109,7 +106,6 @@ def run_strategic_scan(date_key):
                     "R1": ind.get("Pivot.M.Classic.R1"),
                     "R2": ind.get("Pivot.M.Classic.R2"),
                     "Signal": d_rec.replace("_", " "),
-                    "Type": t_type,
                     "Volume_Ratio": round(vol_ratio, 2),
                     "Change_Pct": round(change, 2)
                 })
@@ -127,7 +123,6 @@ def display_stock_card(row):
             <div style="display:flex; justify-content:space-between; align-items:center; direction: rtl;">
                 <div>
                     <span class="symbol-name">{row['Symbol']}</span> 
-                    <span class="trade-tag">{row['Type']}</span>
                 </div>
                 <div style="text-align: left;">
                     <div style="color:#d4af37; font-weight:900; font-size:18px;">{row['Signal']}</div>
@@ -162,7 +157,7 @@ def show_login_screen():
     div[data-testid="stVerticalBlock"] { gap: 0rem; }
     </style>
     <div style="text-align: center; padding: 25px; border: 2px solid #d4af37; border-radius: 15px; background-color: #0a0a0a; margin-bottom: 25px;">
-        <h1 style="color: #d4af37; font-weight: 900; margin: 0; font-size: 38px;">👑 WAHBA INTELLIGENCE</h1>
+        <h1 style="color: #d4af37; font-weight: 900; margin: 0; font-size: 38px;">WAHBA INTELLIGENCE</h1>
         <p style="color: #fff; font-size: 15px; margin-top: 5px;">نظام الفحص الرقمي المؤسسي للنخبة والمشتركين</p>
     </div>
     """, unsafe_allow_html=True)
@@ -175,19 +170,16 @@ def show_login_screen():
         login_pass = st.text_input("كلمة المرور (Password):", type="password", key="login_pass_input", placeholder="أدخل كلمة السر")
         
         if st.button("🚀 دخول المنصة والاطلاع على التحليلات", key="btn_login_click"):
-            # تنظيف الفراغات
             u_clean = login_user.strip()
             p_clean = login_pass.strip()
             
-            # 🔥 التعديل السحري: التحقق المباشر قبل قراءة ملف الـ CSV لضمان الدخول على السيرفر الأونلاين
             if u_clean == "admin" and p_clean == "1234":
                 st.session_state.logged_in = True
                 st.session_state.current_user = "المهندس مصطفى"
                 st.session_state.expiry_display = "حساب إدارة دائم"
-                st.success("👑 أهلاً بك يا باشمهندس مصطفى! جاري فتح المنصة...")
+                st.success("أهلاً بك يا باشمهندس مصطفى! جاري فتح المنصة...")
                 st.rerun()
             else:
-                # التحقق من الملف للمشتركين العاديين
                 df_u = pd.read_csv(DB_USERS)
                 user_row = df_u[(df_u["username"] == u_clean) & (df_u["password"] == p_clean)]
                 if not user_row.empty:
@@ -255,7 +247,6 @@ def show_platform():
     .stock-card:hover { border-color: #fff; background: #111; }
     .symbol-name { font-size: 28px; font-weight: 900; color: #d4af37; }
     .price-val { font-size: 24px; font-weight: bold; color: #fff; }
-    .trade-tag { background: #1a1a1a; color: #d4af37; padding: 4px 12px; border-radius: 6px; font-size: 13px; border: 1px solid #d4af37; margin-right: 10px; font-weight: bold; }
     .stButton>button { background: #d4af37 !important; color: #000 !important; font-weight: 900 !important; border-radius: 10px !important; height: 50px !important; width: 100% !important; border: none !important; transition: 0.3s; }
     .stButton>button:hover { background: #fff !important; transform: scale(1.02); }
     .footer-box { margin-top: 80px; padding: 40px; text-align: center; border-top: 1px solid #1a1a1a; color: #666; font-size: 13px; }
@@ -273,6 +264,16 @@ def show_platform():
     
     st.write(f"📅 **تاريخ تقرير الجلسة:** {today_key} | 🕒 **توقيت القاهرة الفوري:** {now_egypt.strftime('%H:%M')}")
     
+    # 🔄 التحديث التلقائي الذكي بعد انتهاء الجلسة (بعد الساعة 3 عصراً بتوقيت القاهرة)
+    if now_egypt.hour >= 15:
+        if not os.path.exists(DB_FILE):
+            with st.spinner("🔄 نهاية الجلسة المعتادة.. جاري تشغيل الفحص التلقائي لحفظ بيانات اليوم..."):
+                auto_report = run_strategic_scan(today_key)
+                if not auto_report.empty:
+                    auto_report.to_csv(DB_FILE, index=False)
+                    st.session_state.final_report = auto_report
+                    st.rerun()
+
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         if st.button('🚀 تشغيل وتحديث الفحص الفوري للسوق الآن'):
@@ -281,10 +282,19 @@ def show_platform():
                 if not st.session_state.final_report.empty:
                     st.session_state.final_report.to_csv(DB_FILE, index=False)
     
-    if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
-        st.session_state.final_report = pd.read_csv(DB_FILE)
-        st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح.")
-    
+    # محاولة تحميل ملف اليوم، وإذا لم يوجد، يتم تحميل آخر ملف متاح لليوم السابق
+    if 'final_report' not in st.session_state:
+        if os.path.exists(DB_FILE):
+            st.session_state.final_report = pd.read_csv(DB_FILE)
+            st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح.")
+        else:
+            all_files = sorted([f for f in os.listdir('.') if f.startswith("report_") and f.endswith(".csv")], reverse=True)
+            if all_files:
+                st.session_state.final_report = pd.read_csv(all_files[0])
+                st.info(f"📁 تم عرض آخر بيانات محفوظة من جلسة: {all_files[0].replace('report_', '').replace('.csv', '')}")
+            else:
+                st.warning("⚠️ لا توجد بيانات محفوظة حالياً، يرجى تشغيل الفحص أول مرة.")
+
     if 'final_report' in st.session_state:
         df = st.session_state.final_report
         if not df.empty:
