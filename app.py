@@ -10,7 +10,14 @@ import asyncio
 
 # =========================================================================
 # 📁 إعدادات الملفات والمنطقة الزمنية
-# =========================================================================
+# =
+========================================================================
+# 🔒 إعادة تعيين الجلسة عند بدء التشغيل الجديد (لمنع تسريب الجلسات)
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+else:
+    if st.session_state.logged_in and "current_user" not in st.session_state:
+        st.session_state.logged_in = False
 egy_tz = pytz.timezone('Africa/Cairo')
 now_egypt = datetime.now(egy_tz)
 today_key = now_egypt.strftime("%Y-%m-%d")
