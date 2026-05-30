@@ -92,19 +92,6 @@ if st.button("دخول المنصة 🚀"):
     else:
         st.error("❌ بيانات الدخول غير صحيحة.")
 
-            user_found = next((u for u in st.session_state.users if u.get('username') == u_clean and u.get('password') == p_clean), None)
-            if user_found:
-                if user_found.get('status', 'pending') == 'active':
-                    st.session_state.logged_in = True
-                    st.session_state.current_user = user_found.get('username')
-                    st.session_state.user_role = user_found.get('role', 'user')
-                    st.success("👑 تم التحقق بنجاح!")
-                    st.rerun()
-                elif user_found.get('status', 'pending') == 'expired':
-                    st.error("❌ انتهت صلاحية اشتراكك الشهري (30 يوم). يرجى التواصل مع الإدارة للتجديد.")
-                else:
-                    st.warning("⚠️ حسابك في انتظار التفعيل من الإدارة.")
-            else:
                 st.error("❌ بيانات الدخول خاطئة.")
     with tab2:
         new_user = st.text_input("اختر اسم مستخدم", placeholder="الاسم ثلاثي", key="reg_user").strip()
