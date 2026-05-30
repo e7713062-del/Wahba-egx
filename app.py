@@ -34,7 +34,7 @@ if "expiry_display" not in st.session_state:
     st.session_state.expiry_display = ""
 
 # =========================================================================
-# 🧱 2. دوال الفحص الخوارزمي والمؤشرات (نفس الكود الأصلي بالكامل)
+# 🧱 2. دوال الفحص الخوارزمي والمؤشرات
 # =========================================================================
 def fetch_egx_list(date_key):
     try:
@@ -151,17 +151,8 @@ def display_stock_card(row):
         st.markdown("<div style='margin-bottom:30px;'></div>", unsafe_allow_html=True)
 
 # =========================================================================
-# 🔐 3. شاشة تسجيل الدخول المستقلة (منفصلة تماماً عن المنصة)
+# 🔐 3. شاشة تسجيل الدخول المستقلة
 # =========================================================================
-        if st.button("🚀 دخول المنصة والاطلاع على التحليلات", key="btn_login_click"):
-            # إذا كتبت الحساب ده يدخلك علطول كأدمن
-            if login_user == "admin" and login_pass == "1234":
-                st.session_state.logged_in = True
-                st.session_state.current_user = "المهندس مصطفى"
-                st.session_state.expiry_display = "حساب دائم"
-                st.success("أهلاً بك يا باشمهندس!")
-                st.rerun()
-
 def show_login_screen():
     st.markdown("""
     <style>
@@ -182,28 +173,42 @@ def show_login_screen():
         st.markdown("<div style='text-align: right; font-weight: bold;'>يرجى إدخال بيانات حسابك المعتمد لفتح النظام:</div>", unsafe_allow_html=True)
         login_user = st.text_input("اسم المستخدم (Username):", key="login_user_input", placeholder="أدخل اسمك هنا")
         login_pass = st.text_input("كلمة المرور (Password):", type="password", key="login_pass_input", placeholder="أدخل كلمة السر")
+        
         if st.button("🚀 دخول المنصة والاطلاع على التحليلات", key="btn_login_click"):
-            df_u = pd.read_csv(DB_USERS)
-            user_row = df_u[(df_u["username"] == login_user) & (df_u["password"] == login_pass)]
-            if not user_row.empty:
-                status = user_row.iloc[0]["status"]
-                expiry_str = user_row.iloc[0]["expiry_date"]
-                if status == "مقبول":
-                    expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d").date()
-                    if now_egypt.date() <= expiry_date:
-                        st.session_state.logged_in = True
-                        st.session_state.current_user = login_user
-                        st.session_state.expiry_display = expiry_str
-                        st.success("✅ تم التحقق من الحساب الجاري.. جاري تفعيل اللوحة!")
-                        st.rerun()
-                    else:
-                        st.error("❌ عذراً، انتهت صلاحية اشتراكك الشهري! يرجى التواصل مع الإدارة للتجديد.")
-                elif status == "في الانتظار":
-                    st.warning("⏳ حسابك قيد المراجعة حالياً. سيقوم الأدمن بتفعيله فور التأكد من تحويل فودافون كاش.")
-                else:
-                    st.error("❌ تم حظر أو رفض هذا الحساب من قبل الإدارة.")
+            # تنظيف الفراغات
+            u_clean = login_user.strip()
+            p_clean = login_pass.strip()
+            
+            # 🔥 التعديل السحري: التحقق المباشر قبل قراءة ملف الـ CSV لضمان الدخول على السيرفر الأونلاين
+            if u_clean == "admin" and p_clean == "1234":
+                st.session_state.logged_in = True
+                st.session_state.current_user = "المهندس مصطفى"
+                st.session_state.expiry_display = "حساب إدارة دائم"
+                st.success("👑 أهلاً بك يا باشمهندس مصطفى! جاري فتح المنصة...")
+                st.rerun()
             else:
-                st.error("❌ اسم المستخدم أو كلمة المرور التي أدخلتها غير صحيحة.")
+                # التحقق من الملف للمشتركين العاديين
+                df_u = pd.read_csv(DB_USERS)
+                user_row = df_u[(df_u["username"] == u_clean) & (df_u["password"] == p_clean)]
+                if not user_row.empty:
+                    status = user_row.iloc[0]["status"]
+                    expiry_str = user_row.iloc[0]["expiry_date"]
+                    if status == "مقبول":
+                        expiry_date = datetime.strptime(expiry_str, "%Y-%m-%d").date()
+                        if now_egypt.date() <= expiry_date:
+                            st.session_state.logged_in = True
+                            st.session_state.current_user = u_clean
+                            st.session_state.expiry_display = expiry_str
+                            st.success("✅ تم التحقق بنجاح.. جاري تفعيل اللوحة!")
+                            st.rerun()
+                        else:
+                            st.error("❌ عذراً، انتهت صلاحية اشتراكك الشهري!")
+                    elif status == "في الانتظار":
+                        st.warning("⏳ حسابك قيد المراجعة حالياً من قبل الإدارة.")
+                    else:
+                        st.error("❌ هذا الحساب غير مصرح له بالدخول.")
+                else:
+                    st.error("❌ اسم المستخدم أو كلمة المرور التي أدخلتها غير صحيحة.")
     
     with tab2:
         st.subheader("إنشاء حساب جديد وطلب تفعيل")
@@ -237,7 +242,6 @@ def show_login_screen():
 # 🚀 4. المنصة الأساسية (تظهر فقط بعد تسجيل الدخول)
 # =========================================================================
 def show_platform():
-    # التصميم المؤسسي
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
@@ -264,14 +268,11 @@ def show_platform():
     </div>
     """, unsafe_allow_html=True)
     
-    # شريط جانبي للمشترك
     st.sidebar.markdown(f"👤 **المشترك:** `{st.session_state.current_user}`")
     st.sidebar.markdown(f"📅 **نهاية الاشتراك:** `{st.session_state.expiry_display}`")
     
-    # تاريخ الجلسة
     st.write(f"📅 **تاريخ تقرير الجلسة:** {today_key} | 🕒 **توقيت القاهرة الفوري:** {now_egypt.strftime('%H:%M')}")
     
-    # زر التحديث
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         if st.button('🚀 تشغيل وتحديث الفحص الفوري للسوق الآن'):
@@ -280,12 +281,10 @@ def show_platform():
                 if not st.session_state.final_report.empty:
                     st.session_state.final_report.to_csv(DB_FILE, index=False)
     
-    # تحميل التقرير المخزن إن وجد
     if 'final_report' not in st.session_state and os.path.exists(DB_FILE):
         st.session_state.final_report = pd.read_csv(DB_FILE)
-        st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح (وضع الحفظ الذكي والمشتركين).")
+        st.success("📊 تم تحميل تقرير الأسهم الجاهز تلقائياً بنجاح.")
     
-    # عرض النتائج
     if 'final_report' in st.session_state:
         df = st.session_state.final_report
         if not df.empty:
@@ -308,7 +307,6 @@ def show_platform():
         else:
             st.warning("لم يتم العثور على أسهم تتطابق شروطها الفنية تماماً على الفريمات الثلاثة في هذه اللحظة.")
     
-    # تذييل
     st.markdown("""
     <div class="footer-box">
         <p style="font-weight:bold; color:#d4af37; letter-spacing:1px;">WAHBA INTELLIGENCE • INSTITUTIONAL DIVISION</p>
@@ -323,7 +321,7 @@ def show_platform():
     st.markdown("<br><hr style='border-color: #1a1a1a;'>", unsafe_allow_html=True)
     with st.expander("🛠️ لوحة تحكم الإدارة العليا (خاصة بالمهندس مصطفى فقط)"):
         admin_password = st.text_input("أدخل كلمة مرور الأدمن السرية لفتح التحكم الحصري:", type="password", key="admin_pass_field")
-        if admin_password == "WAHBA-ADMIN-2026":
+        if admin_password == "WAHBA-ADMIN-2026" or admin_password == "WahbaAdmin2026":
             st.subheader("📋 كشوفات حسابات المشتركين وطلبات فودافون كاش المعلقة")
             df_u = pd.read_csv(DB_USERS)
             pending_users = df_u[df_u["status"] == "في الانتظار"]
@@ -345,6 +343,7 @@ def show_platform():
                         df_u.to_csv(DB_USERS, index=False)
                         st.error(f"تم رفض حساب {row['username']} بنجاح.")
                         st.rerun()
+            
             st.markdown("<hr style='border-color: #222;'>", unsafe_allow_html=True)
             st.markdown("### 🔄 تجديد وصلاحيات الحسابات النشطة والمنتهية:")
             active_and_expired = df_u[df_u["status"] == "مقبول"]
@@ -361,8 +360,6 @@ def show_platform():
                     else:
                         col_u1.markdown(f"👤 **{row['username']}** | ✅ <span style='color:green;'>نشط وشغال حالياً</span>", unsafe_allow_html=True)
                     col_u2.write(f"📅 تاريخ الصلاحية الحالي: `{row['expiry_date']}`")
-                    
-                    # هنا كملت لك قفلة السطر الممسوح بالظبط زي ما كان أصلاً:
                     if col_u3.button("تجديد 30 يوم إضافي 🔄", key=f"renew_{row['username']}_{idx}"):
                         new_expiry = (datetime.strptime(row['expiry_date'], "%Y-%m-%d") + timedelta(days=30)).strftime("%Y-%m-%d")
                         df_u.loc[df_u["username"] == row["username"], "expiry_date"] = new_expiry
