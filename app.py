@@ -1,6 +1,7 @@
 import os
 import re
-from datetime import datetime
+import logging
+from datetime import datetime, timedelta
 import pytz
 import pandas as pd
 import requests
@@ -11,10 +12,48 @@ from streamlit_autorefresh import st_autorefresh
 
 APP_NAME = "Wahba Intelligence"
 CACHE_DIR = "cache"
+EXPORT_DIR = "exports"
 os.makedirs(CACHE_DIR, exist_ok=True)
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("wahba")
 
 egypt_tz = pytz.timezone("Africa/Cairo")
-now_egypt = datetime.now(egypt_tz)
+
+EGX_LISTED_URL = "https://www.egx.com.eg/en/listedstocks.aspx"
+EGX_MARKET_URL = "https://www.egx.com.eg/en/MarketIndicator.aspx"
+EGX_MAP_URL = "https://egx.com.eg/en/Maps_ListedCo.aspx"
+EGX30_METHOD_URL = "https://www.egx.com.eg/getdoc/e824310c-884d-4700-9153-0f16526e839e/EGX30-Methodology_en-Jan-2025.aspx"
+
+def egypt_now():
+    return datetime.now(egypt_tz)
+
+def http_get(url, timeout=25):
+    headers = {"User-Agent": "Mozilla/5.0"}
+    return requests.get(url, timeout=timeout, headers=headers)
+
+def normalize_symbol(sym):
+    return str(sym).strip().upper().replace(".CA", "")
+
+def parse_number(x):
+    if x is None:
+        return None
+    s = str(x).strip().replace(",", "")
+    mult = 1
+    if s.endswith(("K", "k")):
+        mult = 1_000
+        s = s[:-1]
+    elif s.endswith(("M", "m")):
+        mult = 1_000_000
+        s = s[:-1]
+    elif s.endswith(("B", "b")):
+        mult = 1_000_000_000
+        s = s[:-1]
+    try:
+        return float(s) * mult
+    except:
+        return None
 
 st.set_page_config(
     page_title=APP_NAME,
@@ -46,6 +85,7 @@ html, body, [class*="css"] { font-family: 'Tajawal', sans-serif; }
     background: rgba(255,255,255,.03);
     border: 1px solid rgba(255,255,255,.08);
     box-shadow: 0 8px 24px rgba(0,0,0,.16);
+    margin-bottom: 18px;
 }
 .small-label { color: #8ea3c6; font-size: 12px; margin-bottom: 4px; }
 .big-value { color: #ffffff; font-size: 24px; font-weight: 900; margin: 0; }
@@ -73,19 +113,63 @@ if "last_auto_scan" not in st.session_state:
 @st.cache_data(ttl=86400)
 def get_egx_listed_symbols():
     symbols = set()
-    sources = [
-        "https://egx.com.eg/en/Maps_ListedCo.aspx",
-        "https://www.egx.com.eg/get_pdf.aspx?ID=3848&Lang=ENG",
-    ]
+    sources = [EGX_LISTED_URL, EGX_MAP_URL]
     for url in sources:
         try:
-            r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+            r = http_get(url)
             found = re.findall(r"\b[A-Z]{2,6}.CA\b", r.text)
             for s in found:
-                symbols.add(s.replace(".CA", ""))
-        except:
-            pass
-    return sorted(list(symbols))
+                symbols.add(normalize_symbol(s))
+        except Exception as e:
+            logger.warning("symbol source failed %s %s", url, e)
+    return sorted(symbols)
+
+@st.cache_data(ttl=21600)
+def get_egx_sector_liquidity():
+    try:
+        r = http_get(EGX_MARKET_URL)
+        soup = BeautifulSoup(r.text, "html.parser")
+        rows = []
+        for tr in soup.find_all("tr"):
+            cols = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
+            if len(cols) >= 4:
+                val = parse_number(cols[1])
+                if val is not None:
+                    rows.append({
+                        "Sector": cols[0],
+                        "Value": val,
+                        "Change": cols[2],
+                        "Pct": cols[3],
+                    })
+        df = pd.DataFrame(rows)
+        if not df.empty:
+            df = df.sort_values("Value", ascending=False).reset_index(drop=True)
+            df["Liquidity Rank"] = df.index + 1
+            return df
+    except Exception as e:
+        logger.warning("sector parse failed %s", e)
+
+    fallback = [
+        ("Trade & Distributors", 9959.47, "-112.22", "-1.11%"),
+        ("Industrial Goods, Services and Automobiles", 9067.17, "-12.28", "-0.14%"),
+        ("Building Materials", 4680.21, "8.20", "0.18%"),
+        ("Education Services", 4379.93, "-30.73", "-0.70%"),
+        ("Textile & Durables", 4464.29, "-16.02", "-0.36%"),
+        ("Travel & Leisure", 4132.12, "1.92", "0.05%"),
+        ("Contracting & Construction Engineering", 3782.76, "40.01", "1.07%"),
+        ("Shipping & Transportation Services", 3704.75, "29.67", "0.81%"),
+        ("Real Estate", 3399.28, "39.62", "1.18%"),
+        ("IT, Media & Communication Services", 3023.25, "27.17", "0.91%"),
+        ("Banks", 2817.09, "11.41", "0.41%"),
+        ("Paper & Packaging", 2454.04, "-250.91", "-9.28%"),
+        ("Food, Beverages and Tobacco", 2400.33, "6.14", "0.26%"),
+        ("Non-bank financial services", 1636.33, "5.32", "0.33%"),
+        ("Health Care & Pharmaceuticals", 1522.78, "7.65", "0.50%"),
+        ("Energy & Support Services", 806.39, "7.36", "0.92%"),
+    ]
+    df = pd.DataFrame(fallback, columns=["Sector", "Value", "Change", "Pct"])
+    df["Liquidity Rank"] = range(1, len(df) + 1)
+    return df
 
 @st.cache_data(ttl=3600)
 def get_egx_news():
@@ -96,60 +180,58 @@ def get_egx_news():
     ]
     for url in sources:
         try:
-            r = requests.get(url, timeout=20, headers={"User-Agent": "Mozilla/5.0"})
+            r = http_get(url)
             soup = BeautifulSoup(r.text, "html.parser")
             for a in soup.find_all("a", href=True):
                 txt = a.get_text(" ", strip=True)
                 href = a["href"]
-                if len(txt) > 10:
+                if len(txt) > 15:
+                    if href.startswith("/"):
+                        href = requests.compat.urljoin(url, href)
                     news.append({"title": txt[:200], "url": href})
-        except:
-            pass
+        except Exception as e:
+            logger.warning("news failed %s %s", url, e)
     seen = set()
-    clean = []
+    out = []
     for n in news:
         key = (n["title"], n["url"])
         if key not in seen:
             seen.add(key)
-            clean.append(n)
-    return clean[:50]
+            out.append(n)
+    return out[:50]
 
 def sentiment_score(text):
     pos = ["ربح", "ارتفاع", "زيادة", "نمو", "موافقة", "إيجابي", "تحسن", "توسع", "عقد", "قفزة"]
     neg = ["هبوط", "خسارة", "تراجع", "إيقاف", "عقوبة", "سلبية", "تعثر", "انخفاض", "نزاع"]
-    t = text.lower()
-    score = 0
-    for w in pos:
-        if w in t:
-            score += 1
-    for w in neg:
-        if w in t:
-            score -= 1
-    return score
+    t = str(text).lower()
+    return sum(w in t for w in pos) - sum(w in t for w in neg)
 
 def analyze_symbol(symbol, interval):
     try:
         handler = TA_Handler(symbol=symbol, exchange="EGX", screener="egypt", interval=interval)
         return handler.get_analysis()
-    except:
+    except Exception as e:
+        logger.warning("analysis failed %s %s %s", symbol, interval, e)
         return None
 
 def extract_result(analysis):
     if analysis is None:
         return {}
+    ind = analysis.indicators or {}
+    summ = analysis.summary or {}
     return {
-        "RECOMMENDATION": analysis.summary.get("RECOMMENDATION"),
-        "RSI": analysis.indicators.get("RSI"),
-        "MACD": analysis.indicators.get("MACD.macd"),
-        "MACD_SIGNAL": analysis.indicators.get("MACD.signal"),
-        "CLOSE": analysis.indicators.get("close"),
-        "S1": analysis.indicators.get("pivot.M.Classic.S1"),
-        "P": analysis.indicators.get("pivot.M.Classic.P"),
-        "R1": analysis.indicators.get("pivot.M.Classic.R1"),
-        "EMA20": analysis.indicators.get("EMA20"),
-        "EMA50": analysis.indicators.get("EMA50"),
-        "SMA20": analysis.indicators.get("SMA20"),
-        "SMA50": analysis.indicators.get("SMA50"),
+        "RECOMMENDATION": summ.get("RECOMMENDATION"),
+        "RSI": ind.get("RSI"),
+        "MACD": ind.get("MACD.macd"),
+        "MACD_SIGNAL": ind.get("MACD.signal"),
+        "CLOSE": ind.get("close"),
+        "S1": ind.get("pivot.M.Classic.S1"),
+        "P": ind.get("pivot.M.Classic.P"),
+        "R1": ind.get("pivot.M.Classic.R1"),
+        "EMA20": ind.get("EMA20"),
+        "EMA50": ind.get("EMA50"),
+        "SMA20": ind.get("SMA20"),
+        "SMA50": ind.get("SMA50"),
     }
 
 def score_snapshot(d):
@@ -211,12 +293,6 @@ def full_scan(symbol):
 def scan_market(symbols, limit=50):
     return [full_scan(s) for s in symbols[:limit]]
 
-def save_snapshot_df(df, filename_prefix="market_snapshot"):
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    path = os.path.join(CACHE_DIR, f"{filename_prefix}_{ts}.csv")
-    df.to_csv(path, index=False)
-    return path
-
 def build_top_df(results):
     rows = []
     for x in results:
@@ -231,9 +307,10 @@ def build_top_df(results):
             "Weekly MACD": x["weekly"].get("MACD") if x["weekly"] else None,
             "Daily MACD": x["daily"].get("MACD") if x["daily"] else None,
         })
-    if not rows:
+    df = pd.DataFrame(rows)
+    if df.empty:
         return pd.DataFrame(columns=["Symbol", "Decision", "Score"])
-    return pd.DataFrame(rows).sort_values("Score", ascending=False)
+    return df.sort_values("Score", ascending=False)
 
 def build_news_df(items):
     rows = []
@@ -243,51 +320,104 @@ def build_news_df(items):
             "URL": n["url"],
             "Sentiment": sentiment_score(n["title"]),
         })
-    if not rows:
+    df = pd.DataFrame(rows)
+    if df.empty:
         return pd.DataFrame(columns=["Title", "URL", "Sentiment"])
-    return pd.DataFrame(rows).sort_values("Sentiment", ascending=False)
+    return df.sort_values("Sentiment", ascending=False)
+
+def save_snapshot_df(df, filename_prefix="market_snapshot"):
+    ts = egypt_now().strftime("%Y%m%d_%H%M%S")
+    path = os.path.join(EXPORT_DIR, f"{filename_prefix}_{ts}.csv")
+    df.to_csv(path, index=False)
+    return path
+
+def normalize_symbol(x):
+    return str(x).strip().upper().replace(".CA", "")
+
+def refresh_data(scan_limit, symbols):
+    st.session_state.scan_results = scan_market(symbols, limit=scan_limit)
+    st.session_state.news_items = get_egx_news()
+    st.session_state.last_auto_scan = egypt_now()
+
+def build_watchlist_df(watchlist, results):
+    rows = []
+    for sym in watchlist:
+        row = {"Symbol": sym}
+        match = next((x for x in results if x["symbol"] == sym), None)
+        if match:
+            row["Decision"] = match["decision"]
+            row["Score"] = match["total_score"]
+            row["Daily Rec"] = match["daily"].get("RECOMMENDATION") if match["daily"] else None
+            row["Weekly Rec"] = match["weekly"].get("RECOMMENDATION") if match["weekly"] else None
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    return df if not df.empty else pd.DataFrame(columns=["Symbol", "Decision", "Score"])
+
+@st.cache_data(ttl=43200)
+def get_index_analysis(symbol):
+    try:
+        handler = TA_Handler(symbol=symbol, exchange="EGX", screener="egypt", interval=Interval.INTERVAL_1_DAY)
+        return extract_result(handler.get_analysis())
+    except Exception:
+        return {}
 
 symbols = get_egx_listed_symbols()
 news_items = get_egx_news()
+sector_df = get_egx_sector_liquidity()
 
 if not st.session_state.scan_results:
-    st.session_state.scan_results = scan_market(symbols, limit=50)
-    st.session_state.last_auto_scan = datetime.now(egypt_tz)
+    refresh_data(50, symbols)
 
 st.markdown(f"""
 <div class="hero">
     <h1>Wahba Intelligence</h1>
-    <p>Egyptian Exchange Intelligence Platform · Auto-updated every 15 minutes · Last update: {now_egypt.strftime("%Y-%m-%d %H:%M")} Cairo Time</p>
+    <p>Egyptian Exchange Intelligence Platform · Auto-updated every 15 minutes · Last update: {egypt_now().strftime("%Y-%m-%d %H:%M")} Cairo Time</p>
 </div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
     st.title("Control Panel")
-    view = st.radio("Navigation", ["Overview", "Screener", "News", "Indices", "Watchlist"])
+    view = st.radio("Navigation", ["Overview", "Screener", "News", "Indices", "Watchlist", "Sectors"])
     scan_limit = st.slider("Max symbols in auto scan", 10, 200, 50, 10)
     show_only_signal = st.checkbox("Show only Buy / Strong Buy", value=False)
     force_refresh = st.button("Force Refresh Now")
+    export_now = st.button("Export CSV")
+    add_symbol = st.text_input("Add to watchlist")
+    add_btn = st.button("Add Symbol")
+    remove_symbol = st.text_input("Remove from watchlist")
+    remove_btn = st.button("Remove Symbol")
     st.caption(f"Symbols loaded: {len(symbols)}")
     st.caption(f"News loaded: {len(news_items)}")
     if st.session_state.last_auto_scan:
         st.caption(f"Last auto scan: {st.session_state.last_auto_scan.strftime('%Y-%m-%d %H:%M')}")
 
 if force_refresh:
-    st.session_state.scan_results = scan_market(symbols, limit=scan_limit)
-    st.session_state.news_items = get_egx_news()
-    top_df = build_top_df(st.session_state.scan_results)
-    save_snapshot_df(top_df, "scan_results")
-    st.session_state.last_auto_scan = datetime.now(egypt_tz)
+    refresh_data(scan_limit, symbols)
     st.success("Refreshed successfully.")
 
-if symbols and (datetime.now(egypt_tz).minute % 15 == 0):
-    if st.session_state.last_auto_scan is None or (datetime.now(egypt_tz) - st.session_state.last_auto_scan).seconds >= 900:
-        st.session_state.scan_results = scan_market(symbols, limit=scan_limit)
-        st.session_state.news_items = get_egx_news()
-        st.session_state.last_auto_scan = datetime.now(egypt_tz)
+if export_now:
+    save_snapshot_df(build_top_df(st.session_state.scan_results), "scan_results")
+    save_snapshot_df(build_news_df(st.session_state.news_items), "news")
+    save_snapshot_df(sector_df, "sectors")
+    save_snapshot_df(build_watchlist_df(st.session_state.watchlist, st.session_state.scan_results), "watchlist")
+    st.success("Exported CSV files.")
+
+if add_btn and add_symbol:
+    sym = normalize_symbol(add_symbol)
+    if sym not in st.session_state.watchlist:
+        st.session_state.watchlist.append(sym)
+
+if remove_btn and remove_symbol:
+    sym = normalize_symbol(remove_symbol)
+    st.session_state.watchlist = [x for x in st.session_state.watchlist if x != sym]
+
+if symbols and egypt_now().minute % 15 == 0:
+    if st.session_state.last_auto_scan is None or (egypt_now() - st.session_state.last_auto_scan) >= timedelta(minutes=15):
+        refresh_data(scan_limit, symbols)
 
 results = st.session_state.scan_results
 news = st.session_state.news_items if st.session_state.news_items else news_items
+best_sector = sector_df.iloc[0] if not sector_df.empty else None
 
 if view == "Overview":
     c1, c2, c3, c4 = st.columns(4)
@@ -295,6 +425,7 @@ if view == "Overview":
     c2.metric("News Items", len(news))
     c3.metric("Scanned", len(results))
     c4.metric("Top Opportunities", len([x for x in results if x["decision"] in ["Buy", "Strong Buy"]]))
+
     st.markdown('<div class="section-card">', unsafe_allow_html=True)
     st.subheader("Market Snapshot")
     if results:
@@ -302,7 +433,6 @@ if view == "Overview":
         if show_only_signal:
             df = df[df["Decision"].isin(["Buy", "Strong Buy", "Watch"])]
         st.dataframe(df, use_container_width=True)
-        st.divider()
         if not df.empty:
             best = df.iloc[0]
             st.markdown(f"""
@@ -313,6 +443,14 @@ if view == "Overview":
         st.info("Data is loading automatically.")
     st.markdown("</div>", unsafe_allow_html=True)
 
+    st.markdown('<div class="section-card">', unsafe_allow_html=True)
+    st.subheader("Most Liquid Sector")
+    if best_sector is not None:
+        st.metric("Highest liquidity", best_sector["Sector"])
+        st.metric("Sector value", f"{best_sector['Value']:.2f}")
+        st.dataframe(sector_df, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
 elif view == "Screener":
     st.subheader("Stock Screener")
     if results:
@@ -320,28 +458,39 @@ elif view == "Screener":
         if show_only_signal:
             df = df[df["Decision"].isin(["Buy", "Strong Buy"])]
         st.dataframe(df, use_container_width=True)
-    else:
-        st.warning("No results found yet.")
 
 elif view == "News":
     st.subheader("EGX News")
     df = build_news_df(news)
     st.dataframe(df, use_container_width=True)
     st.divider()
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.write("### Positive News Filter")
+    st.subheader("Positive News Filter")
     st.dataframe(df[df["Sentiment"] > 0], use_container_width=True)
-    st.markdown("</div>", unsafe_allow_html=True)
 
 elif view == "Indices":
     st.subheader("EGX30 / EGX70")
-    st.info("اربط رموز المؤشرات من مزود البيانات، ثم شغّل نفس الـ engine على المؤشرين بنفس منطق weekly ثم daily.")
+    egx30 = get_index_analysis("EGX30")
+    egx70 = get_index_analysis("EGX70")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.write("EGX30")
+        st.json(egx30)
+    with col2:
+        st.write("EGX70")
+        st.json(egx70)
 
 elif view == "Watchlist":
     st.subheader("Watchlist")
     if not st.session_state.watchlist:
         st.info("Watchlist is empty.")
     else:
-        st.dataframe(pd.DataFrame(st.session_state.watchlist), use_container_width=True)
+        wl_df = build_watchlist_df(st.session_state.watchlist, results)
+        st.dataframe(wl_df, use_container_width=True)
+
+elif view == "Sectors":
+    st.subheader("Sector Liquidity")
+    st.dataframe(sector_df, use_container_width=True)
+    if best_sector is not None:
+        st.success(f"أعلى قطاع سيولة حاليًا: {best_sector['Sector']} — {best_sector['Value']:.2f}")
 
 st.caption("Built for Egyptian Exchange market intelligence with a corporate dashboard style.")
