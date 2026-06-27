@@ -1,6 +1,7 @@
 streamlit
-tradingview_ta
 pandas
 requests
 pytz
-google-generativeai
+beautifulsoup4
+tradingview_ta
+plotly
