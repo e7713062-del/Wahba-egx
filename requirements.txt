@@ -1,8 +1,9 @@
 streamlit
-streamlit-autorefresh
 pandas
 requests
-pytz
 beautifulsoup4
-tradingview_ta
-plotly
+pytz
+tradingview-ta
+streamlit-autorefresh
+xlsxwriter
+openpyxl
