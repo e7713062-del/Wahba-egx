@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 from bs4 import BeautifulSoup
 from tradingview_ta import TA_Handler, Interval
+from streamlit_autorefresh import st_autorefresh
 
 APP_NAME = "Wahba Intelligence"
 CACHE_DIR = "cache"
@@ -21,6 +22,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+st_autorefresh(interval=15 * 60 * 1000, limit=None, key="market_autorefresh")
 
 st.markdown("""
 <style>
@@ -64,6 +67,8 @@ if "news_items" not in st.session_state:
     st.session_state.news_items = []
 if "watchlist" not in st.session_state:
     st.session_state.watchlist = []
+if "last_auto_scan" not in st.session_state:
+    st.session_state.last_auto_scan = None
 
 @st.cache_data(ttl=86400)
 def get_egx_listed_symbols():
@@ -245,32 +250,41 @@ def build_news_df(items):
 symbols = get_egx_listed_symbols()
 news_items = get_egx_news()
 
+if not st.session_state.scan_results:
+    st.session_state.scan_results = scan_market(symbols, limit=50)
+    st.session_state.last_auto_scan = datetime.now(egypt_tz)
+
 st.markdown(f"""
 <div class="hero">
     <h1>Wahba Intelligence</h1>
-    <p>Egyptian Exchange Intelligence Platform · Last update: {now_egypt.strftime("%Y-%m-%d %H:%M")} Cairo Time</p>
+    <p>Egyptian Exchange Intelligence Platform · Auto-updated every 15 minutes · Last update: {now_egypt.strftime("%Y-%m-%d %H:%M")} Cairo Time</p>
 </div>
 """, unsafe_allow_html=True)
 
 with st.sidebar:
     st.title("Control Panel")
     view = st.radio("Navigation", ["Overview", "Screener", "News", "Indices", "Watchlist"])
-    scan_limit = st.slider("Scan limit", 10, 200, 50, 10)
+    scan_limit = st.slider("Max symbols in auto scan", 10, 200, 50, 10)
     show_only_signal = st.checkbox("Show only Buy / Strong Buy", value=False)
-    run_scan = st.button("Run Full Scan")
-    refresh_news = st.button("Refresh News")
+    force_refresh = st.button("Force Refresh Now")
     st.caption(f"Symbols loaded: {len(symbols)}")
     st.caption(f"News loaded: {len(news_items)}")
+    if st.session_state.last_auto_scan:
+        st.caption(f"Last auto scan: {st.session_state.last_auto_scan.strftime('%Y-%m-%d %H:%M')}")
 
-if run_scan and symbols:
+if force_refresh:
     st.session_state.scan_results = scan_market(symbols, limit=scan_limit)
+    st.session_state.news_items = get_egx_news()
     top_df = build_top_df(st.session_state.scan_results)
     save_snapshot_df(top_df, "scan_results")
-    st.success("Scan completed successfully.")
+    st.session_state.last_auto_scan = datetime.now(egypt_tz)
+    st.success("Refreshed successfully.")
 
-if refresh_news:
-    st.session_state.news_items = get_egx_news()
-    st.success("News refreshed successfully.")
+if symbols and (datetime.now(egypt_tz).minute % 15 == 0):
+    if st.session_state.last_auto_scan is None or (datetime.now(egypt_tz) - st.session_state.last_auto_scan).seconds >= 900:
+        st.session_state.scan_results = scan_market(symbols, limit=scan_limit)
+        st.session_state.news_items = get_egx_news()
+        st.session_state.last_auto_scan = datetime.now(egypt_tz)
 
 results = st.session_state.scan_results
 news = st.session_state.news_items if st.session_state.news_items else news_items
@@ -296,7 +310,7 @@ if view == "Overview":
             <div class="big-value">{best['Symbol']} · {best['Decision']}</div>
             """, unsafe_allow_html=True)
     else:
-        st.info("Run a scan to populate the dashboard.")
+        st.info("Data is loading automatically.")
     st.markdown("</div>", unsafe_allow_html=True)
 
 elif view == "Screener":
@@ -307,7 +321,7 @@ elif view == "Screener":
             df = df[df["Decision"].isin(["Buy", "Strong Buy"])]
         st.dataframe(df, use_container_width=True)
     else:
-        st.warning("No results found. Run a scan first.")
+        st.warning("No results found yet.")
 
 elif view == "News":
     st.subheader("EGX News")
@@ -322,12 +336,6 @@ elif view == "News":
 elif view == "Indices":
     st.subheader("EGX30 / EGX70")
     st.info("اربط رموز المؤشرات من مزود البيانات، ثم شغّل نفس الـ engine على المؤشرين بنفس منطق weekly ثم daily.")
-    st.markdown('<div class="section-card">', unsafe_allow_html=True)
-    st.write("### Implementation Notes")
-    st.write("- Use the same technical engine.")
-    st.write("- Store a daily snapshot after close.")
-    st.write("- Show trend, RSI, MACD, and support/resistance for each index.")
-    st.markdown("</div>", unsafe_allow_html=True)
 
 elif view == "Watchlist":
     st.subheader("Watchlist")
